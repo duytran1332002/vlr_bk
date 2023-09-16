@@ -3,6 +3,7 @@ import sys
 sys.path.append(os.getcwd())
 
 import glob
+import argparse
 from dataclasses import dataclass
 from datasets import IterableDataset, Dataset, Audio, Features
 from vlr.data.processors.speech_to_text import SpeechToText
@@ -17,10 +18,21 @@ class Args:
     """
     Data processing arguments.
     """
-    data_dir = "/mnt/d/Projects/sandboxes/vlr/raw/20220701_1.wav"
+    parser = argparse.ArgumentParser(description="Data processing arguments.")
+    parser.add_argument(
+        "--data_dir", type=str,
+        default="/mnt/d/Projects/sandboxes/vlr/raw/20220701_1.wav",
+    )
+    parser.add_argument(
+        "--save_dir", type=str,
+        default="/mnt/d/Projects/sandboxes/vlr/processed",
+    )
+    args = parser.parse_args()
+
+    data_dir = args.data_dir
+    save_dir = args.save_dir
     streaming = False
     sampling_rate = 16000
-    save_dir = "/mnt/d/Projects/sandboxes/vlr/processed"
 
     speech2text = SpeechToText(
         model_path=os.getcwd() + "/vlr/data/resources/wav2vec2-base-vietnamese-250h",
