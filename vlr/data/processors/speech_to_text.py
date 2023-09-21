@@ -46,14 +46,16 @@ class SpeechToText(Processor):
     """
     Transcribe audio into text with time offset.
     """
-    def __init__(self,
-                 model_path: str,
-                 lm_gram_name: str = "vi_lm_4grams.bin.zip",
-                 device: str = "cuda",
-                 mode: str = "word",
-                 segment_duration: float = 10.0,
-                 segment_overlap: float = 1.0,
-                 keep_last_segment: bool = True):
+    def __init__(
+        self,
+        model_path: str,
+        lm_gram_name: str = "vi_lm_4grams.bin.zip",
+        device: str = "cuda",
+        mode: str = "word",
+        segment_duration: float = 10.0,
+        segment_overlap: float = 1.0,
+        keep_last_segment: bool = True
+    ):
         # Load the model and the processor.
         self.processor = Wav2Vec2Processor.from_pretrained(model_path)
         self.model = Wav2Vec2ForCTC.from_pretrained(model_path)
@@ -78,6 +80,34 @@ class SpeechToText(Processor):
         self.segment_duration = segment_duration
         self.segment_overlap = segment_overlap
         self.keep_last_segment = keep_last_segment
+
+    def get_lm_decoder(self, lm_path: str):
+        """
+        Get language model decoder
+        :param lm_path:     language model path.
+        :return:            language model decoder.
+        """
+        vocab_dict = self.processor.tokenizer.get_vocab()
+        sort_vocab = sorted((value, key)
+                            for (key, value) in vocab_dict.items())
+        vocab = [x[1] for x in sort_vocab][:-2]
+        vocab_list = vocab
+        # convert ctc blank character representation
+        vocab_list[self.processor.tokenizer.pad_token_id] = ""
+        # replace special characters
+        vocab_list[self.processor.tokenizer.unk_token_id] = ""
+        # vocab_list[tokenizer.bos_token_id] = ""
+        # vocab_list[tokenizer.eos_token_id] = ""
+        # convert space character representation
+        vocab_list[self.processor.tokenizer.word_delimiter_token_id] = " "
+        # specify ctc blank char index,
+        # since conventially it is the last entry of the logit matrix
+        alphabet = Alphabet.build_alphabet(
+            vocab_list, ctc_token_idx=self.processor.tokenizer.pad_token_id)
+        lm_model = kenlm.Model(lm_path)
+        decoder = BeamSearchDecoderCTC(alphabet,
+                                       language_model=LanguageModel(lm_model))
+        return decoder
 
     def process(self, sample: dict):
         """
@@ -115,7 +145,10 @@ class SpeechToText(Processor):
         sample["transcript"] = fn_dict[self.mode](audio_segments, sampling_rate)
         return sample
 
-    def process_sentence(self, audio_segments: dict, sampling_rate: int = 16000):
+    def process_sentence(
+        self, audio_segments: dict,
+        sampling_rate: int = 16000
+    ):
         """
         Transcribe and include time offset for each sentence.
         :param audio_segments:  audio segments.
@@ -129,13 +162,16 @@ class SpeechToText(Processor):
                 audio_array=audio_segment, sampling_rate=sampling_rate, align=False
             )
             transcript.append({
-                "text": text,
+                "text": text.lower(),
                 "start": start,
                 "end": end,
             })
         return transcript
 
-    def process_word(self, audio_segments: dict, sampling_rate: int = 16000):
+    def process_word(
+        self, audio_segments: dict,
+        sampling_rate: int = 16000
+    ):
         """
         Transcribe and include time offset for each word.
         :param audio_segments:  audio segments.
@@ -150,14 +186,19 @@ class SpeechToText(Processor):
             )
         return transcript
 
-    def transcribe(self, audio_array: np.ndarray, sampling_rate: int = 16000,
-                   beam_width: int = 500, align: bool = True):
+    def transcribe(
+        self, audio_array: np.ndarray,
+        sampling_rate: int = 16000,
+        beam_width: int = 500,
+        align: bool = True
+    ):
         """
         Transcribe audio with time offset from audio array.
         :param audio_array:     audio array.
         :param sampling_rate:   sampling rate.
         :param beam_width:      beam width.
-        :return:                aligned transcript.
+        :param align:           align transcript with audio or not.
+        :return:                transcript.
         """
         if self.device == "cuda":
             torch.cuda.empty_cache()
@@ -174,7 +215,11 @@ class SpeechToText(Processor):
 
         return self.align(audio_array, logits, transcript) if align else transcript
 
-    def align(self, audio_array, logits, transcript: str):
+    def align(
+        self, audio_array: np.ndarray,
+        logits: torch.Tensor,
+        transcript: str
+    ):
         """
         Align transcript with audio.
         :param audio_array:     audio array.
@@ -195,42 +240,18 @@ class SpeechToText(Processor):
         ratio = audio_array.shape[1] / (trellis.shape[0] - 1)
         return [
             {
-                "text": word_segment.label,
+                "text": word_segment.label.lower(),
                 "start": int(ratio * word_segment.start),
                 "end": int(ratio * word_segment.end),
             }
             for word_segment in word_segments
         ]
 
-    def get_lm_decoder(self, lm_path: str):
-        """
-        Get language model decoder
-        :param lm_path:     language model path.
-        :return:            language model decoder.
-        """
-        vocab_dict = self.processor.tokenizer.get_vocab()
-        sort_vocab = sorted((value, key)
-                            for (key, value) in vocab_dict.items())
-        vocab = [x[1] for x in sort_vocab][:-2]
-        vocab_list = vocab
-        # convert ctc blank character representation
-        vocab_list[self.processor.tokenizer.pad_token_id] = ""
-        # replace special characters
-        vocab_list[self.processor.tokenizer.unk_token_id] = ""
-        # vocab_list[tokenizer.bos_token_id] = ""
-        # vocab_list[tokenizer.eos_token_id] = ""
-        # convert space character representation
-        vocab_list[self.processor.tokenizer.word_delimiter_token_id] = " "
-        # specify ctc blank char index,
-        # since conventially it is the last entry of the logit matrix
-        alphabet = Alphabet.build_alphabet(
-            vocab_list, ctc_token_idx=self.processor.tokenizer.pad_token_id)
-        lm_model = kenlm.Model(lm_path)
-        decoder = BeamSearchDecoderCTC(alphabet,
-                                       language_model=LanguageModel(lm_model))
-        return decoder
-
-    def get_trellis(self, logits, tokens, blank_id=0):
+    def get_trellis(
+        self, logits: torch.Tensor,
+        tokens: list,
+        blank_id: int = 0
+    ):
         """
         Get trellis for Viterbi decoding.
         :param logits:      logits from the model.
@@ -256,7 +277,12 @@ class SpeechToText(Processor):
             )
         return trellis
 
-    def backtrack(self, trellis, logits, tokens, blank_id=0):
+    def backtrack(
+        self, trellis: torch.Tensor,
+        logits: torch.Tensor,
+        tokens: list,
+        blank_id: int = 0
+    ):
         """
         Get path from trellis.
         :param trellis:     trellis.
@@ -299,7 +325,10 @@ class SpeechToText(Processor):
             raise ValueError("Failed to align")
         return path[::-1]
 
-    def merge_repeats(self, path, transcript):
+    def merge_repeats(
+        self, path: list,
+        transcript: str
+    ):
         """
         Merge repeated characters.
         :param path:        path.
@@ -323,7 +352,10 @@ class SpeechToText(Processor):
             i1 = i2
         return segments
 
-    def merge_words(self, segments, separator="|"):
+    def merge_words(
+        self, segments: list,
+        separator: str = "|"
+    ):
         """
         Merge words.
         :param segments:    segments.
@@ -337,7 +369,8 @@ class SpeechToText(Processor):
                 if i1 != i2:
                     segs = segments[i1:i2]
                     word = "".join([seg.label for seg in segs])
-                    score = sum(seg.score * seg.length for seg in segs) / sum(seg.length for seg in segs)
+                    score = sum(seg.score * seg.length for seg in segs)
+                    score /= sum(seg.length for seg in segs)
                     words.append(Segment(word, segments[i1].start, segments[i2 - 1].end, score))
                 i1 = i2 + 1
                 i2 = i1
