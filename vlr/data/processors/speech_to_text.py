@@ -95,21 +95,22 @@ class SpeechToText(Processor):
 
         # Normalize waveform in order to make it comparable with the pretrained model.
         if len(audio_array.shape) == 1:
-            audio_array = audio_array[np.newaxis, :]
+            audio_array = audio_array[:, np.newaxis]
         audio_array = np.mean(audio_array, axis=1)
 
-        # Trim audio into 10s segments.
+        # Segment audio array.
         audio_segments = {}
         start = 0
         num_points_per_segment = int(self.segment_duration * sampling_rate)
+        overlap = int(self.segment_overlap * sampling_rate)
         while len(audio_array) > num_points_per_segment:
             end = start + self.segment_duration
-            audio_segments[(start, end)].append(audio_array[:num_points_per_segment])
-            audio_array = audio_array[num_points_per_segment:]
+            audio_segments[(start, end)] = audio_array[:num_points_per_segment]
+            audio_array = audio_array[num_points_per_segment - overlap:]
             start += self.segment_duration - self.segment_overlap
         if self.keep_last_segment:
             duration = round(len(audio_array) / sampling_rate, 1)
-            audio_segments[(start, start + duration)] = sample["audio"]["array"]
+            audio_segments[(start, start + duration)] = audio_array
 
         sample["transcript"] = fn_dict[self.mode](audio_segments, sampling_rate)
         return sample
