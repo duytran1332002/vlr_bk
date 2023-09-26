@@ -8,6 +8,7 @@ from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 from pyctcdecode import Alphabet, BeamSearchDecoderCTC, LanguageModel
 from dataclasses import dataclass
 from vlr.data.processors.base import Processor
+from vlr.data.processors.slicer import Slicer
 
 
 logger = logging.getLogger("__name__")
@@ -42,9 +43,9 @@ class Segment:
         return self.end - self.start
 
 
-class SpeechToText(Processor):
+class Transcriber(Processor):
     """
-    Transcribe audio into text with time offset.
+    This class is used to transcribe audio into text.
     """
     def __init__(
         self,
@@ -52,9 +53,6 @@ class SpeechToText(Processor):
         lm_gram_name: str = "vi_lm_4grams.bin.zip",
         device: str = "cuda",
         mode: str = "word",
-        segment_duration: float = 10.0,
-        segment_overlap: float = 1.0,
-        keep_last_segment: bool = True
     ):
         # Load the model and the processor.
         self.processor = Wav2Vec2Processor.from_pretrained(model_path)
@@ -77,9 +75,7 @@ class SpeechToText(Processor):
         self.lm = self.get_lm_decoder(lm_path)
 
         self.mode = mode
-        self.segment_duration = segment_duration
-        self.segment_overlap = segment_overlap
-        self.keep_last_segment = keep_last_segment
+        self.slicer = Slicer()
 
     def get_lm_decoder(self, lm_path: str):
         """
@@ -109,82 +105,83 @@ class SpeechToText(Processor):
                                        language_model=LanguageModel(lm_model))
         return decoder
 
-    def process(self, sample: dict):
+    def process(self, batch: dict):
         """
         Transcribe and include time offset for each word or sentence.
         :param sample:  audio sample.
         :return:        processed sample.
         """
-        fn_dict = {
-            "word": self.process_word,
-            "sentence": self.process_sentence,
+        processed_batch = {
+            "file": [],
+            "transcript": [],
+            "audio": [],
+            "sampling_rate": [],
         }
+        for i, audio_array in enumerate(batch["audio"]):
+            file = batch["file"][i]
+            sampling_rate = batch["sampling_rate"][i]
+            # Normalize waveform in order to make it comparable with the pretrained model.
+            if len(audio_array.shape) == 1:
+                audio_array = audio_array[:, np.newaxis]
+            audio_array = np.mean(audio_array, axis=1)
 
-        audio_array = sample["audio"]["array"]
-        sampling_rate = sample["audio"]["sampling_rate"]
-
-        # Normalize waveform in order to make it comparable with the pretrained model.
-        if len(audio_array.shape) == 1:
-            audio_array = audio_array[:, np.newaxis]
-        audio_array = np.mean(audio_array, axis=1)
-
-        # Segment audio array.
-        audio_segments = {}
-        start = 0
-        num_points_per_segment = int(self.segment_duration * sampling_rate)
-        overlap = int(self.segment_overlap * sampling_rate)
-        while len(audio_array) > num_points_per_segment:
-            end = start + self.segment_duration
-            audio_segments[(start, end)] = audio_array[:num_points_per_segment]
-            audio_array = audio_array[num_points_per_segment - overlap:]
-            start += self.segment_duration - self.segment_overlap
-        if self.keep_last_segment:
-            duration = round(len(audio_array) / sampling_rate, 1)
-            audio_segments[(start, start + duration)] = audio_array
-
-        sample["transcript"] = fn_dict[self.mode](audio_segments, sampling_rate)
-        return sample
+            if self.mode == "word":
+                transcripts, audio_arrays = self.process_word(audio_array, sampling_rate)
+                num_samples = len(transcripts)
+                processed_batch["file"].extend([file] * num_samples)
+                processed_batch["transcript"].extend(transcripts)
+                processed_batch["audio"].extend(audio_arrays)
+                processed_batch["sampling_rate"].extend([sampling_rate] * num_samples)
+            else:
+                transcript = self.process_sentence(audio_array, sampling_rate)
+                processed_batch["file"].append(file)
+                processed_batch["transcript"].append(transcript)
+                processed_batch["audio"].append(audio_array)
+                processed_batch["sampling_rate"].append(sampling_rate)
+        return processed_batch
 
     def process_sentence(
-        self, audio_segments: dict,
+        self, audio_array: np.ndarray,
         sampling_rate: int = 16000
     ):
         """
-        Transcribe and include time offset for each sentence.
-        :param audio_segments:  audio segments.
+        Transcribe each sentence.
+        :param audio_array:     audio array.
         :param sampling_rate:   sampling rate.
         :return:                transcripts of sentences.
         """
-        # Get aligned transcript.
-        transcript = []
-        for (start, end), audio_segment in audio_segments.items():
-            text = self.transcribe(
-                audio_array=audio_segment, sampling_rate=sampling_rate, align=False
-            )
-            transcript.append({
-                "text": text.lower(),
-                "start": start,
-                "end": end,
-            })
-        return transcript
+        return self.transcribe(
+            audio_array=audio_array,
+            sampling_rate=sampling_rate,
+            align=False
+        )
 
     def process_word(
-        self, audio_segments: dict,
+        self, audio_array: np.ndarray,
         sampling_rate: int = 16000
     ):
         """
         Transcribe and include time offset for each word.
-        :param audio_segments:  audio segments.
+        :param audio_array:     audio array.
         :param sampling_rate:   sampling rate.
-        :return:        transcripts of words.
+        :return:                transcripts of words and audio segments.
         """
-        # Get aligned transcript.
-        transcript = []
-        for audio_segment in audio_segments.values():
-            transcript.extend(
-                self.transcribe(audio_array=audio_segment, sampling_rate=sampling_rate)
+        transcripts = []
+        audio_arrays = []
+        words = self.transcribe(audio_array=audio_array, sampling_rate=sampling_rate)
+        for word in words:
+            text = word["text"]
+            start = word["start"]
+            end = word["end"]
+
+            transcripts.append(text)
+            audio_arrays.append(
+                self.slicer.slice(
+                    audio_array, sampling_rate,
+                    start=start, end=end
+                )
             )
-        return transcript
+        return transcripts, audio_arrays
 
     def transcribe(
         self, audio_array: np.ndarray,
@@ -380,5 +377,5 @@ class SpeechToText(Processor):
 
 
 if __name__ == "__main__":
-    stt = SpeechToText()
+    stt = Transcriber()
     stt.process(r"I:\My Drive\north.wav")
