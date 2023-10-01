@@ -1,72 +1,131 @@
-import numpy as np
-from vlr.data.processors import Processor
+import io
+import os
+import contextlib
+import moviepy.editor as mp
+from vlr.data.processors.base import Processor
 
 
 class Slicer(Processor):
-    """
-    This class is used to slice audio array into segments.
-    """
     def __init__(
-        self, segment_duration: float = 10.0,
+        self, raw_dir: str,
+        visual_dir: str,
+        audio_dir: str,
+        fps: int = 25,
+        duration_threshold: float = 1.0,
+        segment_duration: float = 5.0,
         segment_overlap: float = 1.0,
         keep_last_segment: bool = True,
+        overwrite: bool = False,
     ):
+        """
+        :param raw_dir:             Path to directory with raw video files.
+        :param visual_dir:          Path to directory with muted video files.
+        :param audio_dir:           Path to directory with sound files.
+        :param fps:                 Frame rate.
+        :param duration_threshold:  Minimum duration of video segment.
+        :param segment_duration:    Duration of video segment.
+        :param segment_overlap:     Overlap between video segments.
+        :param keep_last_segment:   Keep last video segment.
+        :param overwrite:           Overwrite existing files.
+        """
+        self.raw_dir = raw_dir
+        self.visual_dir = visual_dir
+        self.audio_dir = audio_dir
+        self.fps = fps
+        self.duration_threshold = duration_threshold
         self.segment_duration = segment_duration
         self.segment_overlap = segment_overlap
         self.keep_last_segment = keep_last_segment
+        self.overwrite = overwrite
+        self.output_buffer = io.StringIO()
 
     def process(self, batch: dict):
         """
-        Slice audio array into segments.
-        :param batch:   Batch with audio array.
-        :return:        Sample with sliced audio array.
+        Split video into audio and visual.
+        :param batch:       Batch with video file name.
+        :return:            Sample with audio and visual.
         """
         processed_batch = {
             "file": [],
+            "visual": [],
+            "fps": [],
             "audio": [],
-            "sampling_rate": [],
         }
-        for i, audio_array in enumerate(batch["audio"]):
-            sampling_rate = batch["sampling_rate"][i]
+        for file in batch["file"]:
+            file_id = file.split('.')[0]
+            raw_video_path = os.path.join(self.raw_dir, file)
 
-            # Segment audio array.
-            segments = []
-            num_points_per_segment = int(self.segment_duration * sampling_rate)
-            while len(audio_array) > num_points_per_segment:
-                segments.extend(
-                    self.slice(
-                        audio_array, sampling_rate,
-                        end=self.segment_duration,
-                    )
-                )
-                audio_array = self.slice(
-                    audio_array, sampling_rate,
-                    start=self.segment_duration - self.segment_overlap,
-                )
-            if self.keep_last_segment:
-                segments.append(audio_array)
+            try:
+                # Omit what is printed to stdout.
+                with contextlib.redirect_stdout(self.output_buffer):
+                    video = mp.VideoFileClip(raw_video_path)
+                    duration = video.duration
 
-            # Add segments to batch.
-            processed_batch["file"].extend([batch["file"][i]] * len(segments))
-            processed_batch["audio"].extend(segments)
-            processed_batch["sampling_rate"].extend([sampling_rate] * len(segments))
+                    if duration < self.duration_threshold:
+                        video.close()
+                        raise Exception
+
+                    video = video.set_fps(self.fps)
+                    # Split video into segments.
+                    start = 0
+                    end = self.segment_duration
+                    segment_id = f"{file_id}" + "-{start}-{end}"
+                    audio_path = os.path.join(self.audio_dir, segment_id + ".wav")
+                    visual_path = os.path.join(self.visual_dir, segment_id + ".mp4")
+                    while end <= duration:
+                        segment_visual_path = visual_path.format(start=int(start), end=int(end))
+                        if os.path.exists(segment_visual_path) and not self.overwrite:
+                            segment_visual_path = None
+                        segment_audio_path = audio_path.format(start=int(start), end=int(end))
+                        if os.path.exists(segment_audio_path) and not self.overwrite:
+                            segment_audio_path = None
+                        self.separate(
+                            video.subclip(start, end),
+                            segment_visual_path,
+                            segment_audio_path,
+                        )
+                        processed_batch["file"].append(file)
+                        processed_batch["visual"].append(segment_visual_path)
+                        processed_batch["fps"].append(self.fps)
+                        processed_batch["audio"].append(segment_audio_path)
+                        start += self.segment_duration - self.segment_overlap
+                        end = start + self.segment_duration
+                    end = duration
+                    if end - start >= self.duration_threshold and self.keep_last_segment:
+                        segment_visual_path = visual_path.format(start=int(start), end=int(end))
+                        if os.path.exists(segment_visual_path) and not self.overwrite:
+                            segment_visual_path = None
+                        segment_audio_path = audio_path.format(start=int(start), end=int(end))
+                        if os.path.exists(segment_audio_path) and not self.overwrite:
+                            segment_audio_path = None
+                        self.separate(
+                            video.subclip(start, end),
+                            segment_visual_path,
+                            segment_audio_path,
+                        )
+                        processed_batch["file"].append(file)
+                        processed_batch["visual"].append(segment_visual_path)
+                        processed_batch["fps"].append(self.fps)
+                        processed_batch["audio"].append(segment_audio_path)
+                    video.close()
+            except Exception as e:
+                print(e)
+                continue
 
         return processed_batch
 
-    def slice(
-        self, audio_array: np.ndarray,
-        sampling_rate: int,
-        start: float = 0,
-        end: float = None,
+    def separate(
+        self, segment: mp.VideoFileClip,
+        visual_path: str = None,
+        audio_path: str = None,
     ):
         """
-        Slice audio array.
-        :param audio_array:     Audio array.
-        :param sampling_rate:   Sampling rate.
-        :param start:           Start point in seconds.
-        :param end:             End point in seconds.
-        :return:                Sliced audio array.
+        Separate video into audio and visual.
+        :param segment:     Video segment.
+        :param visual_path:  Path to visual file.
+        :param audio_path:  Path to audio file.
         """
-        start_point = int(start * sampling_rate)
-        end_point = int(end * sampling_rate) if end else len(audio_array)
-        return audio_array[start_point:end_point]
+        if visual_path:
+            segment.without_audio().write_videofile(visual_path, codec="libx264")
+        if audio_path:
+            segment.audio.write_audiofile(audio_path, codec="pcm_s16le")
