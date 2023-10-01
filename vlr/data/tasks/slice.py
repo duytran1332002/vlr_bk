@@ -36,10 +36,14 @@ class Args:
         segment_duration=5.0,
         segment_overlap=1.0,
         keep_last_segment=True,
+        overwrite=False,
     )
 
 
 def main(args: Args):
+    """
+    Main function.
+    """
     # Get dataset.
     logger.info("Preparing dataset...")
     dataset = Dataset.from_dict({"file": os.listdir(args.raw_dir)})

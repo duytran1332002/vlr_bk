@@ -74,15 +74,15 @@ class Slicer(Processor):
                     visual_path = os.path.join(self.visual_dir, segment_id + ".mp4")
                     while end <= duration:
                         segment_visual_path = visual_path.format(start=int(start), end=int(end))
-                        if os.path.exists(segment_visual_path) and not self.overwrite:
-                            segment_visual_path = None
+                        keep_visual = os.path.exists(segment_visual_path) and not self.overwrite
                         segment_audio_path = audio_path.format(start=int(start), end=int(end))
-                        if os.path.exists(segment_audio_path) and not self.overwrite:
-                            segment_audio_path = None
+                        keep_audio = os.path.exists(segment_audio_path) and not self.overwrite
                         self.separate(
-                            video.subclip(start, end),
-                            segment_visual_path,
-                            segment_audio_path,
+                            segment=video.subclip(start, end),
+                            visual_path=segment_visual_path,
+                            keep_visual=keep_visual,
+                            audio_path=segment_audio_path,
+                            keep_audio=keep_audio,
                         )
                         processed_batch["file"].append(file)
                         processed_batch["visual"].append(segment_visual_path)
@@ -93,15 +93,15 @@ class Slicer(Processor):
                     end = duration
                     if end - start >= self.duration_threshold and self.keep_last_segment:
                         segment_visual_path = visual_path.format(start=int(start), end=int(end))
-                        if os.path.exists(segment_visual_path) and not self.overwrite:
-                            segment_visual_path = None
+                        keep_visual = os.path.exists(segment_visual_path) and not self.overwrite
                         segment_audio_path = audio_path.format(start=int(start), end=int(end))
-                        if os.path.exists(segment_audio_path) and not self.overwrite:
-                            segment_audio_path = None
+                        keep_audio = os.path.exists(segment_audio_path) and not self.overwrite
                         self.separate(
-                            video.subclip(start, end),
-                            segment_visual_path,
-                            segment_audio_path,
+                            segment=video.subclip(start, end),
+                            visual_path=segment_visual_path,
+                            keep_visual=keep_visual,
+                            audio_path=segment_audio_path,
+                            keep_audio=keep_audio,
                         )
                         processed_batch["file"].append(file)
                         processed_batch["visual"].append(segment_visual_path)
@@ -116,8 +116,10 @@ class Slicer(Processor):
 
     def separate(
         self, segment: mp.VideoFileClip,
-        visual_path: str = None,
-        audio_path: str = None,
+        visual_path: str,
+        keep_visual: bool,
+        audio_path: str,
+        keep_audio: bool,
     ):
         """
         Separate video into audio and visual.
@@ -125,7 +127,7 @@ class Slicer(Processor):
         :param visual_path:  Path to visual file.
         :param audio_path:  Path to audio file.
         """
-        if visual_path:
+        if not keep_visual:
             segment.without_audio().write_videofile(visual_path, codec="libx264")
-        if audio_path:
+        if not keep_audio:
             segment.audio.write_audiofile(audio_path, codec="pcm_s16le")
