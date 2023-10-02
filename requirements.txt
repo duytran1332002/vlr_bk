@@ -4,3 +4,7 @@ pyctcdecode==0.1.0
 kenlm==0.2.0
 torch==2.0.1
 numpy==1.24.4
+moviepy==1.0.3
+denoiser==0.1.5
+mediapipe==0.10.5
+opencv-python==4.8.1.78
