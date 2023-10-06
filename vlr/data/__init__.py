@@ -1,1 +1,1 @@
-from vlr.data.processors.speech_to_text import SpeechToText
+from vlr.data.processors.transcriber import Transcriber
