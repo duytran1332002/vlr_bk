@@ -90,7 +90,6 @@ async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
         else:
             user = await api.user(user_id)
             pbar = tqdm.tqdm(total=user.stats.video_count)
-        
         async for video in user.videos:
             link = f"https://www.tiktok.com/@{user_id}/video/{video.id}"
             await download_video(link=link, output_path=output_path)
@@ -101,7 +100,7 @@ async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
 
 
 if __name__ == "__main__":
-    user_id = 'vtvthoitiet'
+    user_id = 'vtcnow'
     directory = '/home/duytran/Downloads/new_raw_video'
 
     output_path = os.path.join(directory, user_id)
