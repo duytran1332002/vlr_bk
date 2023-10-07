@@ -89,6 +89,7 @@ def main(args: Args):
             os.path.join(args.cur_stage_dir, channel_name),
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
         )
+        dataset.cleanup_cache_files()
 
 
 if __name__ == "__main__":
