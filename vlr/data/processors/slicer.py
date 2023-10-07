@@ -68,7 +68,7 @@ class Slicer(Processor):
                 # Split video into segments.
                 start = 0
                 end = self.segment_duration
-                while end - start >= self.duration_threshold and end <= duration:
+                while end <= duration:
                     segment_visual_path = visual_path.format(start=int(start), end=int(end))
                     segment_audio_path = audio_path.format(start=int(start), end=int(end))
 
@@ -86,7 +86,7 @@ class Slicer(Processor):
                     start += self.segment_duration - self.segment_overlap
                     end = start + self.segment_duration
 
-                if self.keep_last_segment and int(duration) > self.segment_duration:
+                if self.keep_last_segment and int(duration - start) > self.duration_threshold:
                     end = duration
                     start = end - self.segment_duration
                     segment_visual_path = visual_path.format(start=int(start), end=int(end))
