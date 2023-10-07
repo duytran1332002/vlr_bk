@@ -65,3 +65,46 @@ class Denoiser(Processor):
             "sampling_rate": self.sampling_rate,
         }
         return sample
+
+    def process_batch(self, batch: dict, channel_name: str):
+        """
+        Denoise audio array.
+        :param batch:           Batch of samples.
+        :param channel_name:    Channel name.
+        :return:                Samples updated with path to denoised audio array.
+        """
+        audio_arrays = []
+        indexes = [0]
+        for path in batch["audio"]:
+            audio_array, sampling_rate = torchaudio.load(path)
+            audio_array = convert_audio(
+                audio_array.cuda(),
+                sampling_rate,
+                self.model.sample_rate,
+                self.model.chin
+            )
+            audio_arrays.append(audio_array)
+            indexes.append(indexes[-1] + audio_array.shape[1])
+        audio_arrays = torch.cat(audio_arrays, dim=1).cuda()
+
+        with torch.no_grad():
+            output = self.model(audio_arrays[None].float())
+        denoised_audio_arrays = self.resampler(output[0].cpu()).numpy()
+
+        for i, id in enumerate(batch["id"]):
+            denoised_path = os.path.join(self.denoised_dir, channel_name, f"{id}-denoised.wav")
+
+            if self.overwrite or not os.path.exists(denoised_path):
+                denoised_audio_array = denoised_audio_arrays[:, indexes[i]:indexes[i+1]]
+                sf.write(
+                    denoised_path,
+                    np.ravel(denoised_audio_array),
+                    self.model.sample_rate,
+                )
+
+            batch["audio"][i] = {
+                "path": denoised_path,
+                "sampling_rate": self.sampling_rate,
+            }
+
+        return batch

@@ -28,6 +28,7 @@ class Args:
     # Path to file containing channel names.
     channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
 
+    batch_size = 40
     num_proc = 8
     overwrite = False
 
@@ -66,8 +67,10 @@ def main(args: Args):
         # Denoise audio.
         logger.info("Denoising audio...")
         dataset = dataset.map(
-            args.denoiser.process_sample,
+            args.denoiser.process_batch,
             fn_kwargs={"channel_name": channel_name},
+            batched=True,
+            batch_size=args.batch_size,
         )
 
         # Save dataset.
