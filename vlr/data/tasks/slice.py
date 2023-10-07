@@ -21,20 +21,19 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/raw"
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/raw"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_1"
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_1"   # Change this.
     # Path to directory containing muted videos.
-    visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"
+    visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"  # Change this.
     # Path to directory containing sound files.
-    audio_dir = "/mnt/d/Projects/sandboxes/vlr/audio"
+    audio_dir = "/mnt/d/Projects/sandboxes/vlr/audio"   # Change this.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
-    duration_threshold = 1.0
-    batch_size = 100
-    num_proc = 8
-    overwrite = False
+    batch_size = 100    # Change this if necessary.
+    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
+    overwrite = False   # Change this if necessary.
 
     separator = Slicer(
         visual_dir=visual_dir,

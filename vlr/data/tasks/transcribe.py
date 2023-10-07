@@ -20,17 +20,17 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_2"
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_2"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_3"
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_3"  # Change this.
     # Path to directory containing denoised sound files.
-    transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"
+    transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"    # Change this.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
-    batch_size = 10
-    num_proc = 8
-    overwrite = False
+    batch_size = 10     # Change this if necessary.
+    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
+    overwrite = False   # Change this if necessary.
 
     transcriber = Transcriber(
         repo_id="nguyenvulebinh/wav2vec2-base-vietnamese-250h",

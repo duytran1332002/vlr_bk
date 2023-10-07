@@ -28,9 +28,9 @@ class Args:
     # Path to file containing channel names.
     channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
 
-    batch_size = 40
-    num_proc = 8
-    overwrite = False
+    batch_size = 40   # Change this if necessary.
+    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
+    overwrite = False   # Change this if necessary.
 
     denoiser = Denoiser(
         denoised_dir=denoised_dir,

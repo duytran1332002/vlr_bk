@@ -20,16 +20,16 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_3"
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_3"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"   # Change this.
     # Path to directory containing mouth regions.
-    mouth_dir = "/mnt/d/Projects/sandboxes/vlr/mouths"
+    mouth_dir = "/mnt/d/Projects/sandboxes/vlr/mouths"  # Change this.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
-    num_proc = 8
-    overwrite = True
+    num_proc = 8    # Change this if necessary. -1 means using all available CPUs.
+    overwrite = False   # Change this if necessary.
 
     cropper = Cropper(
         mouth_dir=mouth_dir,

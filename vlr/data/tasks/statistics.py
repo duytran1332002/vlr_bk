@@ -19,13 +19,13 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of the final stage.
-    final_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"
+    final_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"   # Change this.
     # Path to directory containing transcripts.
-    transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"
+    transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"    # Change this.
     # Path to directory containing statistics.
-    statistics_dir = "/mnt/d/Projects/sandboxes/vlr/statistics"
+    statistics_dir = "/mnt/d/Projects/sandboxes/vlr/statistics"   # Change this.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
 
 def main(args: Args):
