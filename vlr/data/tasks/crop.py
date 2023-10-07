@@ -75,6 +75,10 @@ def main(args: Args):
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
         )
 
+        # Check number of samples.
+        assert len(os.listdir(os.path.join(args.mouth_dir, channel_name))) == dataset.num_rows, \
+            "Number of mouth regions does not match that in dataset."
+
         # Save dataset.
         logger.info("Saving dataset...")
         dataset.save_to_disk(

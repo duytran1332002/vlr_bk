@@ -105,6 +105,21 @@ def main(args: Args):
         )
         print("Number of samples after slicing:", dataset.num_rows)
 
+        # Check number of samples.
+        logger.info("Checking number of samples...")
+        message = "Number of {type} samples does not match that in dataset."
+        message += " ({num_samples} vs {num_rows})"
+        num_visual_samples = len(os.listdir(os.path.join(args.visual_dir, channel_name)))
+        assert num_visual_samples == dataset.num_rows, \
+            message.format(
+                type="visual", num_samples=num_visual_samples, num_rows=dataset.num_rows
+            )
+        num_audio_samples = len(os.listdir(os.path.join(args.audio_dir, channel_name)))
+        assert num_audio_samples == dataset.num_rows, \
+            message.format(
+                type="audio", num_samples=num_audio_samples, num_rows=dataset.num_rows
+            )
+
         # Save dataset.
         logger.info("Saving dataset...")
         dataset.save_to_disk(
