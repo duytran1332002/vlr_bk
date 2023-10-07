@@ -37,36 +37,27 @@ class Cropper(Processor):
         fps = sample["visual"]["fps"]
         mouth_path = os.path.join(self.mouth_dir, channel_name, f"{id}-mouth.mp4")
 
-        cap = cv2.VideoCapture(visual_path)
-        frame_width = int(cap.get(3))
-        frame_height = int(cap.get(4))
+        try:
+            if self.overwrite or not os.path.exists(mouth_path):
+                cap = cv2.VideoCapture(visual_path)
+                frame_width = int(cap.get(3))
+                frame_height = int(cap.get(4))
 
-        one_face_only = True
-        frames = self.get_frames(cap)
-        for i, frame in enumerate(frames):
-            detections = self.face_detector.process(frame).detections
-            if detections and len(detections) == 1:
-                for detection in detections:
-                    bboxC = detection.location_data.relative_bounding_box
-                    ih, iw, _ = frame.shape
-                    x, y, w, h = int(bboxC.xmin * iw), int(bboxC.ymin * ih), \
-                        int(bboxC.width * iw), int(bboxC.height * ih)
-                    frames[i] = frame[y + h//2:y + h, x:x + w]
-            else:
-                one_face_only = False
-                break
+                mouths = []
+                for frame in self.get_frames(cap):
+                    mouths.append(self.crop_mouth(frame))
 
-        if one_face_only:
-            video_writer = cv2.VideoWriter(mouth_path, self.fourcc, fps, (frame_width, frame_height))
-            for frame in frames:
-                frame = cv2.resize(frame, (frame_width, frame_height))
-                video_writer.write(frame)
-            sample["visual"]["path"] = os.path.basename(mouth_path)
-            video_writer.release()
-        else:
+                video_writer = cv2.VideoWriter(
+                    mouth_path, self.fourcc, fps, (frame_width, frame_height)
+                )
+                for mouth in mouths:
+                    mouth = cv2.resize(mouth, (frame_width, frame_height))
+                    video_writer.write(mouth)
+                video_writer.release()
+                cap.release()
+            sample["visual"]["path"] = mouth_path
+        except Exception:
             sample["visual"]["path"] = None
-
-        cap.release()
 
         return sample
 
@@ -75,10 +66,28 @@ class Cropper(Processor):
         Get frames from sample.
         :param cap:     Video capture.
         """
-        frames = []
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-            frames.append(frame)
-        return frames
+            yield frame
+
+    def crop_mouth(self, frame: np.ndarray):
+        """
+        Crop mouth region in frame.
+        :param frame:   Frame.
+        :return:        Mouth region.
+        """
+        detections = self.face_detector.process(frame).detections
+
+        mouth = None
+        if detections and len(detections) == 1:
+            for detection in detections:
+                bboxC = detection.location_data.relative_bounding_box
+                ih, iw, _ = frame.shape
+                x, y, w, h = int(bboxC.xmin * iw), int(bboxC.ymin * ih), \
+                    int(bboxC.width * iw), int(bboxC.height * ih)
+                mouth = frame[y + h//2:y + h, x:x + w]
+        if mouth is None or mouth.shape[0] == 0 or mouth.shape[1] == 0:
+            raise Exception("No mouth detected.")
+        return mouth
