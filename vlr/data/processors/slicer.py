@@ -86,8 +86,9 @@ class Slicer(Processor):
                     start += self.segment_duration - self.segment_overlap
                     end = start + self.segment_duration
 
-                end = duration
-                if end - start >= self.duration_threshold and self.keep_last_segment:
+                if self.keep_last_segment and int(duration) > self.segment_duration:
+                    end = duration
+                    start = end - self.segment_duration
                     segment_visual_path = visual_path.format(start=int(start), end=int(end))
                     segment_audio_path = audio_path.format(start=int(start), end=int(end))
 
