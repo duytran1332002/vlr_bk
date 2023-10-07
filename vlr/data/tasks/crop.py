@@ -7,7 +7,7 @@ from tqdm import tqdm
 from dataclasses import dataclass
 from logging import getLogger
 from datasets import load_from_disk
-from vlr.data.utils import clean_up
+from vlr.data.utils.tools import clean_up
 from vlr.data.processors.cropper import Cropper
 
 

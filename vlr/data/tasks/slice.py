@@ -9,7 +9,7 @@ from logging import getLogger
 from datasets import Dataset
 from tqdm import tqdm
 from vlr.data.processors.slicer import Slicer
-from vlr.data.utils import clean_up
+from vlr.data.utils.tools import clean_up
 
 
 logger = getLogger()

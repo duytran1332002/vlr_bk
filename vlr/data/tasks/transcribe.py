@@ -8,7 +8,7 @@ from logging import getLogger
 from datasets import load_from_disk
 from tqdm import tqdm
 from vlr.data.processors.transcriber import Transcriber
-from vlr.data.utils import clean_up
+from vlr.data.utils.tools import clean_up
 
 
 logger = getLogger()

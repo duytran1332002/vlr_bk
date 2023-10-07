@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 import mediapipe as mp
 from vlr.data.processors.base import Processor
 
@@ -27,7 +28,7 @@ class Cropper(Processor):
 
     def process_sample(self, sample: dict, channel_name: str):
         """
-        Crop mouth region.
+        Crop mouth region in video.
         :param batch:           Sample.
         :param channel_name:    Channel name.
         :return:                Sample with path to video of cropped mouth region.
