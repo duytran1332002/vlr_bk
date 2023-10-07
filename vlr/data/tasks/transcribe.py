@@ -7,8 +7,8 @@ from dataclasses import dataclass
 from logging import getLogger
 from datasets import load_from_disk
 from tqdm import tqdm
-from vlr.data.utils import clean_up
 from vlr.data.processors.transcriber import Transcriber
+from vlr.data.utils import clean_up
 
 
 logger = getLogger()
@@ -33,8 +33,7 @@ class Args:
     overwrite = False
 
     transcriber = Transcriber(
-        model_path="/mnt/d/Projects/vlr/vlr/data/resources/wav2vec2-base-vietnamese-250h",
-        lm_gram_name="vi_lm_4grams.bin.zip",
+        repo_id="nguyenvulebinh/wav2vec2-base-vietnamese-250h",
         device="cuda",
         transcript_dir=transcript_dir,
         overwrite=overwrite,

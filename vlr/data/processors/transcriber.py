@@ -1,9 +1,10 @@
 import os
+import zipfile
 import kenlm
+import numpy as np
 import torch
 import torchaudio
-import zipfile
-import numpy as np
+from huggingface_hub import hf_hub_download
 from pyctcdecode import Alphabet, BeamSearchDecoderCTC, LanguageModel
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 from vlr.data.processors.base import Processor
@@ -15,8 +16,7 @@ class Transcriber(Processor):
     """
     def __init__(
         self,
-        model_path: str,
-        lm_gram_name: str = "vi_lm_4grams.bin.zip",
+        repo_id: str,
         device: str = "cuda",
         transcript_dir: str = None,
         overwrite: bool = False,
@@ -29,8 +29,8 @@ class Transcriber(Processor):
         :param overwrite:           Overwrite existing files.
         """
         # Load the model and the processor.
-        self.processor = Wav2Vec2Processor.from_pretrained(model_path)
-        self.model = Wav2Vec2ForCTC.from_pretrained(model_path)
+        self.processor = Wav2Vec2Processor.from_pretrained(repo_id)
+        self.model = Wav2Vec2ForCTC.from_pretrained(repo_id)
 
         # Prepare device.
         if device == "cuda" and not torch.cuda.is_available():
@@ -40,11 +40,14 @@ class Transcriber(Processor):
         self.model = self.model.to(device)
 
         # Prepare language model decoder.
-        lm_zip_path = os.path.join(model_path, lm_gram_name)
+        lm_zip_path = hf_hub_download(
+            repo_id=repo_id,
+            filename="vi_lm_4grams.bin.zip",
+        )
         lm_path = lm_zip_path[:-4]
         if not os.path.exists(lm_path):
             with zipfile.ZipFile(lm_zip_path, 'r') as zip_ref:
-                zip_ref.extractall(model_path)
+                zip_ref.extractall(os.path.dirname(lm_zip_path))
         self.lm = self.get_lm_decoder(lm_path)
 
         self.transcript_dir = transcript_dir
@@ -106,40 +109,6 @@ class Transcriber(Processor):
         sample["transcript"] = transcript_path
         return sample
 
-    def process_batch(self, batch: dict, channel_name: str):
-        """
-        Transcribe a batch of samples.
-        :param sample:          Batch of audio samples.
-        :param channel_name:    Channel name.
-        :return:                Processed batch.
-        """
-        audio_arrays = []
-        for audio in batch["audio"]:
-            audio_array, sampling_rate = torchaudio.load(audio["path"])
-            audio_arrays.append(audio_array.numpy())
-        audio_array = np.stack(audio_arrays, axis=0)
-        sampling_rate = batch["audio"][0]["sampling_rate"]
-
-        transcripts = self.transcribe(
-            audio_array=audio_array,
-            sampling_rate=sampling_rate,
-        )
-        print(transcripts)
-
-        transcript_paths = []
-        for i, audio in enumerate(batch["audio"]):
-            id = batch["id"][i]
-            transcript_path = os.path.join(self.transcript_dir, channel_name, f"{id}.txt")
-
-            if self.overwrite or not os.path.exists(transcript_path):
-                with open(transcript_path, "w") as f:
-                    print(transcripts[i], file=f)
-
-            transcript_paths.append(transcript_path)
-            batch["audio"][i]["path"] = os.path.basename(audio["path"])
-        batch["transcript"] = transcript_paths
-        return batch
-
     def transcribe(
         self, audio_array: np.ndarray,
         sampling_rate: int = 16000,
@@ -163,23 +132,7 @@ class Transcriber(Processor):
         ).input_values.to(self.device)
         logits = self.model(input_values).logits
 
-        if logits.shape[0] > 1:
-            transcripts = []
-            for i in range(logits.shape[0]):
-                print(logits.shape)
-                print(logits[i].unsqueeze(0).shape)
-                transcript = self.lm.decode(
-                    logits[i].unsqueeze(0).cpu().detach().numpy(),
-                    beam_width=beam_width
-                )
-                transcripts.append(transcript)
-            return transcripts
         return self.lm.decode(
             logits[0].cpu().detach().numpy(),
             beam_width=beam_width
         )
-
-
-if __name__ == "__main__":
-    stt = Transcriber()
-    stt.process_batch(r"I:\My Drive\north.wav")
