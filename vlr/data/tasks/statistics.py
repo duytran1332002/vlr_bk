@@ -19,7 +19,7 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of the final stage.
-    final_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"   # Change this.
+    final_stage_dir = "/mnt/d/Projects/sandboxes/vlr/cropping"   # Change this.
     # Path to directory containing transcripts.
     transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"    # Change this.
     # Path to directory containing statistics.
