@@ -70,6 +70,12 @@ How to use:
 python vlr/data/task/crop.py
 ```
 
+# Run 4 tasks above
+To run 4 tasks in a row, use this command
+```
+bash vlr/scripts/full_process.sh
+```
+
 # Do statistics
 What this task do:
 * Count total duration
