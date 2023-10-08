@@ -22,7 +22,7 @@ class Args:
     # Path to directory of previous stage.
     prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/denoising"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/trancribing"  # Change path, but keep the dir name.
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/transcribing"  # Change path, but keep the dir name.
     # Path to directory containing denoised sound files.
     transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"    # Change path, but keep the dir name.
     # Path to file containing channel names.
