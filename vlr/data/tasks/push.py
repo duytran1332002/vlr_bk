@@ -19,8 +19,14 @@ class Args:
     """
     Data processing arguments.
     """
-    # Path to directory of the final stage.
-    final_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"   # Change this.
+    # Path to directory of the slicing stage.
+    slicing_dir = "/mnt/d/Projects/sandboxes/vlr/slicing"   # Change this.
+    # Path to directory of the denoising stage.
+    denoising_dir = "/mnt/d/Projects/sandboxes/vlr/denoising"   # Change this.
+    # Path to directory of the transcribing stage.
+    transcribing_dir = "/mnt/d/Projects/sandboxes/vlr/transcribing"   # Change this.
+    # Path to directory of the cropping stage.
+    cropping_dir = "/mnt/d/Projects/sandboxes/vlr/cropping"   # Change this.
     # Path to directory containing visual features.
     visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"   # Change this.
     # Path to directory containing transcripts.
@@ -35,7 +41,10 @@ class Args:
     channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
     data_dirs = [
-        final_stage_dir,
+        slicing_dir,
+        denoising_dir,
+        transcribing_dir,
+        cropping_dir,
         visual_dir,
         audio_dir,
         denoised_dir,
