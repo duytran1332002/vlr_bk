@@ -20,11 +20,11 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_3"    # Change this.
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/transcribing"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_4"   # Change this.
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/cropping"   # Change path, but keep the dir name.
     # Path to directory containing mouth regions.
-    mouth_dir = "/mnt/d/Projects/sandboxes/vlr/mouths"  # Change this.
+    mouth_dir = "/mnt/d/Projects/sandboxes/vlr/mouths"  # Change path, but keep the dir name.
     # Path to file containing channel names.
     channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 

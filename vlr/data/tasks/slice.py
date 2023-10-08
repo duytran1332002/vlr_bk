@@ -21,13 +21,13 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/raw"    # Change this.
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/active_speaker"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_1"   # Change this.
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/slicing"   # Change path, but keep the dir name.
     # Path to directory containing muted videos.
-    visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"  # Change this.
+    visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"  # Change path, but keep the dir name.
     # Path to directory containing sound files.
-    audio_dir = "/mnt/d/Projects/sandboxes/vlr/audio"   # Change this.
+    audio_dir = "/mnt/d/Projects/sandboxes/vlr/audio"   # Change path, but keep the dir name.
     # Path to file containing channel names.
     channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 

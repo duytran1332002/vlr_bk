@@ -20,13 +20,13 @@ class Args:
     Data processing arguments.
     """
     # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_1"
+    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/slicing"    # Change this.
     # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/stage_2"
+    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/denoising"   # Change path, but keep the dir name.
     # Path to directory containing denoised sound files.
-    denoised_dir = "/mnt/d/Projects/sandboxes/vlr/denoised"
+    denoised_dir = "/mnt/d/Projects/sandboxes/vlr/denoised"   # Change path, but keep the dir name.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
 
     batch_size = 40   # Change this if necessary.
     num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
