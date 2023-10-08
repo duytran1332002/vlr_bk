@@ -81,7 +81,7 @@ def main(args: Args):
 
         # Check number of samples.
         assert len(os.listdir(os.path.join(args.transcript_dir, channel_name))) == dataset.num_rows, \
-            "Number of transcripts does not match that in dataset."
+            f"{channel_name} - Number of transcripts does not match that in dataset."
 
         # Save dataset.
         logger.info("Saving dataset...")

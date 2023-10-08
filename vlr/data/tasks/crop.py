@@ -77,7 +77,7 @@ def main(args: Args):
 
         # Check number of samples.
         assert len(os.listdir(os.path.join(args.mouth_dir, channel_name))) == dataset.num_rows, \
-            "Number of mouth regions does not match that in dataset."
+            f"{channel_name} - Number of mouth regions does not match that in dataset."
 
         # Save dataset.
         logger.info("Saving dataset...")
