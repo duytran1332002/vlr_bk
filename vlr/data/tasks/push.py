@@ -64,7 +64,7 @@ def main(args: Args):
     token = argparser.parse_args().token
 
     with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().splitlines()
+        channel_names = f.read().strip().split()
 
     api = HfApi()
     for channel_name in tqdm(

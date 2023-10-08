@@ -44,7 +44,7 @@ def main(args: Args):
     Main function.
     """
     with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().splitlines()
+        channel_names = f.read().strip().split()
 
     for channel_name in tqdm(
         channel_names,

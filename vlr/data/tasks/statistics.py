@@ -25,7 +25,7 @@ class Args:
     # Path to directory containing statistics.
     statistics_dir = "/mnt/d/Projects/sandboxes/vlr/statistics"   # Change this.
     # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
+    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/done.txt"   # Change this.
 
 
 def main(args: Args):
@@ -33,7 +33,7 @@ def main(args: Args):
     Main function.
     """
     with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().splitlines()
+        channel_names = f.read().strip().split()
 
     dictionary = {}
     total_duration = 0
