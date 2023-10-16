@@ -106,7 +106,7 @@ class Transcriber(Processor):
                 transcript_path = None
 
         sample["audio"]["path"] = os.path.basename(sample["audio"]["path"])
-        sample["transcript"] = transcript_path
+        sample["transcript"] = os.path.basename(transcript_path)
         return sample
 
     def transcribe(

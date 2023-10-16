@@ -1,3 +1,25 @@
+# Data Structure
+```
+fptu/vlr
+|--- README.md
+|--- active_speaker
+|--- raw
+|--- v1
+     |--- stage_1
+          |--- slicing
+          |--- visual
+          |--- audio
+     |--- stage_2
+          |--- denoising
+          |--- denoised
+     |--- stage_3
+          |--- transcribing
+          |--- transcripts
+     |--- stage_4
+          |--- cropping
+          |--- mouths
+```
+
 # Download Video From Tiktok
 Run the following code to install the necessary library
 ```python
