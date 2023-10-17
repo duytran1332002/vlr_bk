@@ -12,6 +12,7 @@ import random
 import torch
 import torchaudio
 import torchvision
+import sentencepiece
 from importlib.machinery import SourceFileLoader
 
 
@@ -32,7 +33,6 @@ class FunctionalModule(torch.nn.Module):
 
     def forward(self, input):
         return self.functional(input)
-
 
 class AdaptiveTimeMask(torch.nn.Module):
     def __init__(self, window, stride):
@@ -80,7 +80,6 @@ class AddNoise(torch.nn.Module):
             speech, noise_segment, snr_level)
         return noisy_speech.t()
 
-
 class VideoTransform:
     def __init__(self, subset):
         if subset == "train":
@@ -103,7 +102,6 @@ class VideoTransform:
         # sample: T x C x H x W
         # rtype: T x 1 x H x W
         return self.video_pipeline(sample)
-
 
 class AudioTransform:
     def __init__(self, subset, snr_target=None):
@@ -141,16 +139,22 @@ class TextTransform:
         sp_model_path=SP_MODEL_PATH,
     ):
         self.ignore_id = -1
-        
-        # load tokenizer from SentencePiece model
+        #load tokenizer from SentencePiece model
         self.tokenizer = SourceFileLoader("envibert.tokenizer", os.path.join(
             sp_model_path, 'envibert_tokenizer.py')).load_module().RobertaTokenizer(sp_model_path)
-        self.token_list = list(self.tokenizer.get_vocab())
-        
+        self.token_list = list(self.tokenizer.get_vocab())  
+    
     def tokenize(self, text):
         token = self.tokenizer(text, return_tensors="pt")
         token = token["input_ids"].squeeze(0)
+        # remove <s> and </s>
+        token = token[1:-1]
         return token
+    
+    def tokenize(self, text):
+        tokens = self.spm.EncodeAsPieces(text)
+        token_ids = [self.hashmap.get(token, self.hashmap["<unk>"]) for token in tokens]
+        return torch.tensor(list(map(int, token_ids)))
 
     def post_process(self, token_ids):
         token_ids = token_ids[token_ids != -1]
@@ -160,4 +164,4 @@ class TextTransform:
 
     def _ids_to_str(self, token_ids, char_list):
         token_as_list = [char_list[idx] for idx in token_ids]
-        return "".join(token_as_list).replace("<space>", " ")
+        return "".join(token_as_list).replace("<mask>", " ")

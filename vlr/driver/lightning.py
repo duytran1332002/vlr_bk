@@ -34,7 +34,7 @@ class ModelModule(LightningModule):
         if self.cfg.pretrained_model_path:
             ckpt = torch.load(self.cfg.pretrained_model_path, map_location=lambda storage, loc: storage)
             if self.cfg.transfer_frontend:
-                tmp_ckpt = {k: v for k, v in ckpt["model_state_dict"].items() if k.startswith("trunk.") or k.startswith("frontend3D.")}
+                tmp_ckpt = {k.replace("encoder.frontend.", ""): v for k, v in ckpt.items() if k.startswith("encoder.frontend.")}
                 self.model.encoder.frontend.load_state_dict(tmp_ckpt)
             elif self.cfg.transfer_encoder:
                 tmp_ckpt = {k.replace("encoder.", ""): v for k, v in ckpt.items() if k.startswith("encoder.")}
@@ -55,7 +55,7 @@ class ModelModule(LightningModule):
         nbest_hyps = self.beam_search(enc_feat)
         nbest_hyps = [h.asdict() for h in nbest_hyps[: min(len(nbest_hyps), 1)]]
         predicted_token_id = torch.tensor(list(map(int, nbest_hyps[0]["yseq"][1:])))
-        predicted = self.text_transform.post_process(predicted_token_id).replace("<eos>", "")
+        predicted = self.text_transform.post_process(predicted_token_id).replace("</s>", "")
         return predicted
 
     def training_step(self, batch, batch_idx):
@@ -67,24 +67,19 @@ class ModelModule(LightningModule):
     def test_step(self, sample, sample_idx):
         enc_feat, _ = self.model.encoder(sample["input"].unsqueeze(0).to(self.device), None)
         enc_feat = enc_feat.squeeze(0)
-
         nbest_hyps = self.beam_search(enc_feat)
         nbest_hyps = [h.asdict() for h in nbest_hyps[: min(len(nbest_hyps), 1)]]
         predicted_token_id = torch.tensor(list(map(int, nbest_hyps[0]["yseq"][1:])))
-        predicted = self.text_transform.post_process(predicted_token_id).replace("<eos>", "")
+        predicted = self.text_transform.post_process(predicted_token_id).replace("</s>", "")
 
         token_id = sample["target"]
         actual = self.text_transform.post_process(token_id)
-        print("&"*100)
-        print(predicted)
-        print(actual)
 
         self.total_edit_distance += compute_word_level_distance(actual, predicted)
         self.total_length += len(actual.split())
         return
 
     def _step(self, batch, batch_idx, step_type):
-    
         loss, loss_ctc, loss_att, acc = self.model(batch["inputs"], batch["input_lengths"], batch["targets"])
         batch_size = len(batch["inputs"])
         if step_type == "train":
@@ -117,6 +112,7 @@ class ModelModule(LightningModule):
 
     def on_test_epoch_end(self):
         self.log("wer", self.total_edit_distance / self.total_length)
+
 
 
 def get_beam_search_decoder(model, token_list, ctc_weight=0.1, beam_size=40):
