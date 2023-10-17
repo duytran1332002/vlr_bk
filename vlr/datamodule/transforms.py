@@ -150,11 +150,6 @@ class TextTransform:
         # remove <s> and </s>
         token = token[1:-1]
         return token
-    
-    def tokenize(self, text):
-        tokens = self.spm.EncodeAsPieces(text)
-        token_ids = [self.hashmap.get(token, self.hashmap["<unk>"]) for token in tokens]
-        return torch.tensor(list(map(int, token_ids)))
 
     def post_process(self, token_ids):
         token_ids = token_ids[token_ids != -1]
