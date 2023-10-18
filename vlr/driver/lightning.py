@@ -100,6 +100,9 @@ class ModelModule(LightningModule):
 
     def on_train_epoch_start(self):
         sampler = self.trainer.train_dataloader.batch_sampler
+        # shuffle dataset in streaming mode every epoch
+        if self.cfg.streaming and self.cfg.data.shuffle:
+            self.trainer.datamodule.dataset = self.trainer.datamodule.dataset.shuffle()
         if hasattr(sampler, "set_epoch"):
             sampler.set_epoch(self.current_epoch)
         return super().on_train_epoch_start()
