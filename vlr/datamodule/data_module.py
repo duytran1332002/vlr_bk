@@ -55,7 +55,8 @@ class DataModule(LightningDataModule):
         self.cfg.devices = torch.cuda.device_count()
         self.total_gpus = self.cfg.devices * self.cfg.trainer.num_nodes
         self.dataset = load_dataset(os.path.join(self.cfg.data.dataset.root_dir, self.cfg.data.dataset.train_dir))
-        #self.dataset["train"] = self.dataset["train"].select(range(100))
+        if self.cfg.data.select != -1:
+            self.dataset["train"] = self.dataset["train"].select(range(self.cfg.data.select))
         # split dataset
         self.dataset = self.dataset["train"].train_test_split(test_size=self.cfg.data.dataset.test_size)
 
@@ -93,7 +94,7 @@ class DataModule(LightningDataModule):
                 audio_transform=AudioTransform("train"),
                 video_transform=VideoTransform("train"),
             )
-            sampler = ByFrameCountSampler(train_ds, self.cfg.data.max_frames)
+            sampler = ByFrameCountSampler(train_ds, self.cfg.data.max_frames, self.cfg.data.shuffle)
             if self.total_gpus > 1:
                 sampler = DistributedSamplerWrapper(sampler)
             else:
