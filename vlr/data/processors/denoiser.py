@@ -13,16 +13,18 @@ class Denoiser(Processor):
     This class is used to denoise audio array.
     """
     def __init__(
-        self, denoised_dir: str = None,
+        self, audio_dir: str,
+        denoised_dir: str,
         sampling_rate: int = 16000,
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         :param denoised_dir:    Path to directory containing denoised sound files.
         :param sampling_rate:   Sampling rate.
         :param overwrite:       Overwrite existing files.
         """
         self.model = pretrained.dns64().cuda()
+        self.audio_dir = audio_dir
         self.denoised_dir = denoised_dir
         self.sampling_rate = sampling_rate
         self.resampler = torchaudio.transforms.Resample(
@@ -31,18 +33,21 @@ class Denoiser(Processor):
         )
         self.overwrite = overwrite
 
-    def process_sample(self, sample: dict, channel_name: str):
+    def process_sample(self, sample: dict) -> dict:
         """
         Denoise audio array.
         :param sample:          Sample.
-        :param channel_name:    Channel name.
         :return:                Sample updated with path to denoised audio array.
         """
-        id = sample["id"]
-        denoised_path = os.path.join(self.denoised_dir, channel_name, f"{id}-denoised.wav")
+        audio_path = os.path.join(
+            self.audio_dir, sample["channel_name"], sample["id"] + ".wav"
+        )
+        denoised_path = os.path.join(
+            self.denoised_dir, sample["channel_name"], sample["id"] + ".wav"
+        )
 
         if self.overwrite or not os.path.exists(denoised_path):
-            audio_array, sampling_rate = torchaudio.load(sample["audio"])
+            audio_array, sampling_rate = torchaudio.load(audio_path)
             audio_array = convert_audio(
                 audio_array.cuda(),
                 sampling_rate,
@@ -60,23 +65,22 @@ class Denoiser(Processor):
                 self.model.sample_rate,
             )
 
-        sample["audio"] = {
-            "path": denoised_path,
-            "sampling_rate": self.sampling_rate,
-        }
+        sample["sampling_rate"] = self.sampling_rate
         return sample
 
-    def process_batch(self, batch: dict, channel_name: str):
+    def process_batch(self, batch: dict) -> dict:
         """
         Denoise audio array.
         :param batch:           Batch of samples.
-        :param channel_name:    Channel name.
         :return:                Samples updated with path to denoised audio array.
         """
         audio_arrays = []
         indexes = [0]
-        for path in batch["audio"]:
-            audio_array, sampling_rate = torchaudio.load(path)
+        for id, channel_name in zip(batch["id"], batch["channel"]):
+            audio_path = os.path.join(
+                self.audio_dir, channel_name, id + ".wav"
+            )
+            audio_array, sampling_rate = torchaudio.load(audio_path)
             audio_array = convert_audio(
                 audio_array.cuda(),
                 sampling_rate,
@@ -91,8 +95,10 @@ class Denoiser(Processor):
             output = self.model(audio_arrays[None].float())
         denoised_audio_arrays = self.resampler(output[0].cpu()).numpy()
 
-        for i, id in enumerate(batch["id"]):
-            denoised_path = os.path.join(self.denoised_dir, channel_name, f"{id}-denoised.wav")
+        for i, (id, channel_name) in enumerate(zip(batch["id"], batch["channel"])):
+            denoised_path = os.path.join(
+                self.denoised_dir, channel_name, id + ".wav"
+            )
 
             if self.overwrite or not os.path.exists(denoised_path):
                 denoised_audio_array = denoised_audio_arrays[:, indexes[i]:indexes[i+1]]
@@ -102,9 +108,5 @@ class Denoiser(Processor):
                     self.model.sample_rate,
                 )
 
-            batch["audio"][i] = {
-                "path": denoised_path,
-                "sampling_rate": self.sampling_rate,
-            }
-
+        batch["sampling_rate"] = [self.sampling_rate] * len(batch["id"])
         return batch
