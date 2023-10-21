@@ -84,13 +84,15 @@ def main(args: argparse.Namespace):
         total=len(channel_names),
         unit="channel"
     ):
+        print("\n" + "#" * 50 + f" Processing {channel_name} " + "#" * 50)
         for relative_data_dir in tqdm(
             relative_data_dirs,
-            desc=f"Processing {channel_name}",
+            desc="Processing directories",
             total=len(relative_data_dirs),
             unit="directory",
             leave=False,
         ):
+            print("-" * 20 + f" Processing {relative_data_dir} " + "-" * 20)
             channel_dir = os.path.join(args.src, relative_data_dir, channel_name)
             if not relative_data_dir.startswith("stage"):
                 if not os.path.exists(channel_dir):

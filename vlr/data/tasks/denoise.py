@@ -78,7 +78,7 @@ def main(args: argparse.Namespace):
         overwrite=args.overwrite,
     )
 
-    print("\n#" * 50 + " Denoising " + "#" * 50)
+    print("\n" + "#" * 50 + " Denoising " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",

@@ -79,7 +79,7 @@ def main(args: argparse.Namespace) -> None:
         overwrite=args.overwrite,
     )
 
-    print("\n#" * 50 + " Transcribing " + "#" * 50)
+    print("\n" + "#" * 50 + " Transcribing " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
