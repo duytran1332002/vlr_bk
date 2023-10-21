@@ -5,13 +5,11 @@ sys.path.append(os.getcwd())
 
 import argparse
 from tqdm import tqdm
-from logging import getLogger
 from datasets import load_dataset, disable_caching
 from vlr.data.utils.tools import clean_up
 from vlr.data.processors.cropper import Cropper
 
 
-logger = getLogger()
 disable_caching()
 
 
@@ -38,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--overwrite",
         type=bool,
-        default=False,
+        action=argparse.BooleanOptionalAction,
         help="Overwrite existing files.",
     )
     return parser.parse_args()
@@ -60,7 +58,7 @@ def main(args: argparse.Namespace) -> None:
         print(f"Directory {prev_stage_dir} does not exist.")
         return
 
-    mouth_dir = os.path.join(args.data_dir, "transcripts")
+    mouth_dir = os.path.join(args.data_dir, "mouths")
     if not os.path.exists(mouth_dir):
         os.makedirs(mouth_dir)
     cur_stage_dir = os.path.join(args.data_dir, "stage_4")
@@ -80,18 +78,19 @@ def main(args: argparse.Namespace) -> None:
         overwrite=args.overwrite,
     )
 
+    print("\n#" * 50 + " Cropping " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
         clean_up(channel_name, [mouth_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
+        print("Preparing dataset...")
         prev_stage_path = os.path.join(prev_stage_dir, channel_name + ".json")
         if not os.path.exists(prev_stage_path):
             print(f"Channel {channel_name} does not exist.")
@@ -116,7 +115,7 @@ def main(args: argparse.Namespace) -> None:
             f"{channel_name} - Number of mouth regions does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
+        print("Saving dataset...")
         dataset.to_pandas().to_json(
             os.path.join(cur_stage_dir, channel_name + ".json"),
             orient="records",

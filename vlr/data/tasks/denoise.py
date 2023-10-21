@@ -4,14 +4,12 @@ import sys
 sys.path.append(os.getcwd())
 
 import argparse
-from logging import getLogger
 from datasets import load_dataset, disable_caching
 from tqdm import tqdm
 from vlr.data.processors.denoiser import Denoiser
 from vlr.data.utils.tools import clean_up
 
 
-logger = getLogger()
 disable_caching()
 
 
@@ -37,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--overwrite",
-        type=bool,
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Overwrite existing files.",
     )
@@ -80,18 +78,19 @@ def main(args: argparse.Namespace):
         overwrite=args.overwrite,
     )
 
+    print("\n#" * 50 + " Denoising " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
         clean_up(channel_name, [denoised_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
+        print("Preparing dataset...")
         prev_stage_path = os.path.join(prev_stage_dir, channel_name + ".json")
         if not os.path.exists(prev_stage_path):
             print(f"Channel {channel_name} does not exist.")
@@ -101,7 +100,7 @@ def main(args: argparse.Namespace):
         )
 
         # Denoise audio.
-        logger.info("Denoising audio...")
+        print("Denoising audio...")
         dataset = dataset.map(
             denoiser.process_batch,
             batched=True,
@@ -113,7 +112,7 @@ def main(args: argparse.Namespace):
             f"{channel_name} - Number of denoised samples does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
+        print("Saving dataset...")
         dataset.to_pandas().to_json(
             os.path.join(cur_stage_dir, channel_name + ".json"),
             orient="records",

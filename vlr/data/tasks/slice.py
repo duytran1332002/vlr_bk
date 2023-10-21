@@ -6,13 +6,11 @@ sys.path.append(os.getcwd())
 import glob
 import argparse
 from tqdm import tqdm
-from logging import getLogger
 from datasets import Dataset, disable_caching
 from vlr.data.processors.slicer import Slicer
 from vlr.data.utils.tools import clean_up
 
 
-logger = getLogger()
 disable_caching()
 
 
@@ -50,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--overwrite",
-        type=bool,
+        action=argparse.BooleanOptionalAction,
         default=False,
         help="Overwrite existing files.",
     )
@@ -113,18 +111,19 @@ def main(args: argparse.Namespace):
         overwrite=args.overwrite,
     )
 
+    print("\n#" * 50 + " Slicing " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
         clean_up(channel_name, [visual_dir, audio_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
+        print("Preparing dataset...")
         prev_stage_dir = os.path.join(args.active_speaker_dir, channel_name)
         if not os.path.exists(prev_stage_dir):
             print(f"Channel {channel_name} does not exist.")
@@ -132,7 +131,7 @@ def main(args: argparse.Namespace):
         dataset = Dataset.from_dict(initial_dataset(prev_stage_dir, channel_name))
 
         # Extract audio and visual.
-        logger.info("Extracting audio and visual from dataset...")
+        print("Extracting audio and visual from dataset...")
         dataset = dataset.map(
             separator.process_batch,
             batched=True, batch_size=args.batch_size,
@@ -141,7 +140,7 @@ def main(args: argparse.Namespace):
         )
 
         # Check number of samples.
-        logger.info("Checking number of samples...")
+        print("Checking number of samples...")
         num_visual_samples = len(os.listdir(os.path.join(visual_dir, channel_name)))
         assert num_visual_samples == dataset.num_rows, \
             f"{channel_name} - Number of visual samples does not match that in dataset."
@@ -150,7 +149,7 @@ def main(args: argparse.Namespace):
             f"{channel_name} - Number of audio samples does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
+        print("Saving dataset...")
         dataset.to_pandas().to_json(
             os.path.join(cur_stage_dir, channel_name + ".json"),
             orient="records",
