@@ -118,6 +118,7 @@ def main(args: argparse.Namespace):
             orient="records",
         )
         dataset.cleanup_cache_files()
+        print("-" * (13 + len(channel_name) + 2 * 20))
 
 
 if __name__ == "__main__":
