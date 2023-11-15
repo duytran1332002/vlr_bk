@@ -13,7 +13,7 @@ class Slicer(Processor):
         segment_overlap: float = 1.0,
         keep_last_segment: bool = True,
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         :param visual_dir:          Path to directory with muted video files.
         :param audio_dir:           Path to directory with sound files.
@@ -33,18 +33,16 @@ class Slicer(Processor):
         self.keep_last_segment = keep_last_segment
         self.overwrite = overwrite
 
-    def process_batch(self, batch: dict, channel_name: str):
+    def process_batch(self, batch: dict) -> dict:
         """
         Split video into audio and visual.
         :param batch:           Batch with path to video file.
-        :param channel_name:    Channel name.
         :return:                Samples with paths to audio and visual.
         """
         ids = []
-        visual_paths = []
-        audio_paths = []
         durations = []
-        for raw_video_path in batch["file"]:
+        channel_names = []
+        for raw_video_path, channel_name in zip(batch["file"], batch["channel"]):
             file_id = os.path.basename(raw_video_path).split('.')[0]
 
             try:
@@ -53,7 +51,7 @@ class Slicer(Processor):
 
                 if duration < self.duration_threshold:
                     video.close()
-                    raise Exception
+                    raise Exception("Video is too short")
 
                 video = video.set_fps(self.fps)
 
@@ -79,14 +77,13 @@ class Slicer(Processor):
                     )
 
                     ids.append(segment_id.format(start=int(start), end=int(end)))
-                    visual_paths.append(segment_visual_path)
-                    audio_paths.append(segment_audio_path)
+                    channel_names.append(channel_name)
                     durations.append(int(end - start))
 
                     start += self.segment_duration - self.segment_overlap
                     end = start + self.segment_duration
 
-                if self.keep_last_segment and int(duration - start) > self.duration_threshold:
+                if self.keep_last_segment and int(duration - end) >= self.segment_overlap:
                     end = duration
                     start = end - self.segment_duration
                     segment_visual_path = visual_path.format(start=int(start), end=int(end))
@@ -99,24 +96,16 @@ class Slicer(Processor):
                     )
 
                     ids.append(segment_id.format(start=int(start), end=int(end)))
-                    visual_paths.append(segment_visual_path)
-                    audio_paths.append(segment_audio_path)
+                    channel_names.append(channel_name)
                     durations.append(int(end - start))
 
                 video.close()
-            except Exception as e:
-                print(e)
-                continue
+            except Exception:
+                pass
 
         batch["id"] = ids
-        batch["visual"] = [
-            {
-                "path": visual_path,
-                "fps": self.fps,
-            }
-            for visual_path in visual_paths
-        ]
-        batch["audio"] = audio_paths
+        batch["channel"] = channel_names
+        batch["fps"] = [self.fps] * len(ids)
         batch["duration"] = durations
         return batch
 
@@ -124,7 +113,7 @@ class Slicer(Processor):
         self, segment: mp.VideoFileClip,
         visual_path: str,
         audio_path: str,
-    ):
+    ) -> None:
         """
         Separate video into audio and visual.
         :param segment:         Video segment.

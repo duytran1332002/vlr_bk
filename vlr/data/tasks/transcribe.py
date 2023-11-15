@@ -3,94 +3,128 @@ import sys
 
 sys.path.append(os.getcwd())
 
-from dataclasses import dataclass
-from logging import getLogger
-from datasets import load_from_disk
+import argparse
 from tqdm import tqdm
+from datasets import load_dataset, disable_caching
 from vlr.data.processors.transcriber import Transcriber
 from vlr.data.utils.tools import clean_up
 
 
-logger = getLogger()
+disable_caching()
 
 
-@dataclass
-class Args:
-    """
-    Data processing arguments.
-    """
-    # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/denoising"    # Change this.
-    # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/transcribing"  # Change path, but keep the dir name.
-    # Path to directory containing denoised sound files.
-    transcript_dir = "/mnt/d/Projects/sandboxes/vlr/transcripts"    # Change path, but keep the dir name.
-    # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
-
-    batch_size = 10     # Change this if necessary.
-    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
-    overwrite = False   # Change this if necessary.
-
-    transcriber = Transcriber(
-        repo_id="nguyenvulebinh/wav2vec2-base-vietnamese-250h",
-        device="cuda",
-        transcript_dir=transcript_dir,
-        overwrite=overwrite,
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        required=True,
+        help="Path to data directory.",
     )
+    parser.add_argument(
+        "--channel-names-path",
+        type=str,
+        default=None,
+        help="Path to file containing channel names.",
+    )
+    parser.add_argument(
+        "--num-proc",
+        type=int,
+        default=-1,
+        help="Number of processes.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        type=bool,
+        action=argparse.BooleanOptionalAction,
+        help="Overwrite existing files.",
+    )
+    return parser.parse_args()
 
 
-def main(args: Args):
+def main(args: argparse.Namespace) -> None:
     """
     Main function.
     """
-    with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().strip().split()
+    if not os.path.exists(args.data_dir):
+        print(f"Directory {args.data_dir} does not exist.")
+        return
+    denoised_dir = os.path.join(args.data_dir, "denoised")
+    if not os.path.exists(denoised_dir):
+        print(f"Directory {denoised_dir} does not exist.")
+        return
+    prev_stage_dir = os.path.join(args.data_dir, "stage_2")
+    if not os.path.exists(prev_stage_dir):
+        print(f"Directory {prev_stage_dir} does not exist.")
+        return
 
+    transcript_dir = os.path.join(args.data_dir, "transcripts")
+    if not os.path.exists(transcript_dir):
+        os.makedirs(transcript_dir)
+    cur_stage_dir = os.path.join(args.data_dir, "stage_3")
+    if not os.path.exists(cur_stage_dir):
+        os.makedirs(cur_stage_dir)
+
+    if args.channel_names_path:
+        with open(args.channel_names_path, "r") as f:
+            channel_names = f.read().strip().split()
+    else:
+        channel_names = os.listdir(denoised_dir)
+
+    transcriber = Transcriber(
+        repo_id="nguyenvulebinh/wav2vec2-base-vietnamese-250h",
+        denoised_dir=denoised_dir,
+        transcript_dir=transcript_dir,
+        device="cuda",
+        overwrite=args.overwrite,
+    )
+
+    print("\n" + "#" * 50 + " Transcribing " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
-        clean_up(channel_name, [args.transcript_dir], args.overwrite)
+        clean_up(channel_name, [transcript_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
-        prev_stage_dir = os.path.join(args.prev_stage_dir, channel_name)
-        if not os.path.exists(prev_stage_dir):
+        print("Preparing dataset...")
+        prev_stage_path = os.path.join(prev_stage_dir, channel_name + ".json")
+        if not os.path.exists(prev_stage_path):
             print(f"Channel {channel_name} does not exist.")
             continue
-        dataset = load_from_disk(prev_stage_dir)
+        dataset = load_dataset(
+            "json", data_files=prev_stage_path, split="train",
+        )
 
         # Transcribe.
-        logger.info("Transcribing...")
+        print("Transcribing...")
         dataset = dataset.map(
-            args.transcriber.process_sample,
-            fn_kwargs={"channel_name": channel_name},
+            transcriber.process_sample,
         )
 
         # Filter out samples with empty transcripts.
-        logger.info("Filtering out samples with empty transcripts...")
+        print("Filtering out samples with empty transcripts...")
         dataset = dataset.filter(
-            lambda sample: sample["transcript"] is not None,
+            lambda sample: sample["id"] is not None,
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
         )
 
         # Check number of samples.
-        assert len(os.listdir(os.path.join(args.transcript_dir, channel_name))) == dataset.num_rows, \
+        assert len(os.listdir(os.path.join(transcript_dir, channel_name))) == dataset.num_rows, \
             f"{channel_name} - Number of transcripts does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
-        dataset.save_to_disk(
-            os.path.join(args.cur_stage_dir, channel_name),
-            num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
+        print("Saving dataset...")
+        dataset.to_pandas().to_json(
+            os.path.join(cur_stage_dir, channel_name + ".json"),
+            orient="records",
         )
         dataset.cleanup_cache_files()
 
 
 if __name__ == "__main__":
-    main(Args())
+    main(parse_args())

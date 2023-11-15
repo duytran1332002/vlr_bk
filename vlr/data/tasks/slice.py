@@ -4,36 +4,101 @@ import sys
 sys.path.append(os.getcwd())
 
 import glob
-from dataclasses import dataclass
-from logging import getLogger
-from datasets import Dataset
+import argparse
 from tqdm import tqdm
+from datasets import Dataset, disable_caching
 from vlr.data.processors.slicer import Slicer
 from vlr.data.utils.tools import clean_up
 
 
-logger = getLogger()
+disable_caching()
 
 
-@dataclass
-class Args:
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--active-speaker-dir",
+        type=str,
+        required=True,
+        help="Path to active speaker data directory.",
+    )
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        required=True,
+        help="Path to data directory.",
+    )
+    parser.add_argument(
+        "--channel-names-path",
+        type=str,
+        default=None,
+        help="Path to file containing channel names.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Batch size.",
+    )
+    parser.add_argument(
+        "--num-proc",
+        type=int,
+        default=-1,
+        help="Number of processes.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Overwrite existing files.",
+    )
+    return parser.parse_args()
+
+
+def initial_dataset(channel_dir: str, channel_name: str) -> dict:
     """
-    Data processing arguments.
+    Initial dataset.
+    :param channel_dir:             Path to channel directory.
+    :param channel_name:            Channel name.
+    :return:                        Dataset.
     """
-    # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/active_speaker"    # Change this.
-    # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/slicing"   # Change path, but keep the dir name.
-    # Path to directory containing muted videos.
-    visual_dir = "/mnt/d/Projects/sandboxes/vlr/visual"  # Change path, but keep the dir name.
-    # Path to directory containing sound files.
-    audio_dir = "/mnt/d/Projects/sandboxes/vlr/audio"   # Change path, but keep the dir name.
-    # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
+    files = []
+    chunk_dirs = glob.glob(os.path.join(channel_dir, "*"))
+    for chunk_dir in chunk_dirs:
+        video_paths = glob.glob(os.path.join(chunk_dir, "pyactive", "*.avi"))
+        for video_path in video_paths:
+            files.append(video_path)
+    return {
+        "file": files,
+        "channel": [channel_name] * len(files),
+    }
 
-    batch_size = 100    # Change this if necessary.
-    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
-    overwrite = False   # Change this if necessary.
+
+def main(args: argparse.Namespace):
+    """
+    Main function.
+    """
+    if not os.path.exists(args.active_speaker_dir):
+        print(f"Directory {args.active_speaker_dir} does not exist.")
+        return
+
+    if not os.path.exists(args.data_dir):
+        os.makedirs(args.data_dir)
+    visual_dir = os.path.join(args.data_dir, "visual")
+    if not os.path.exists(visual_dir):
+        os.makedirs(visual_dir)
+    audio_dir = os.path.join(args.data_dir, "audio")
+    if not os.path.exists(audio_dir):
+        os.makedirs(audio_dir)
+    cur_stage_dir = os.path.join(args.data_dir, "stage_1")
+    if not os.path.exists(cur_stage_dir):
+        os.makedirs(cur_stage_dir)
+
+    if args.channel_names_path:
+        with open(args.channel_names_path, "r") as f:
+            channel_names = f.read().strip().split()
+    else:
+        channel_names = os.listdir(args.active_speaker_dir)
 
     separator = Slicer(
         visual_dir=visual_dir,
@@ -43,85 +108,54 @@ class Args:
         segment_duration=3.0,
         segment_overlap=1.0,
         keep_last_segment=True,
-        overwrite=overwrite,
+        overwrite=args.overwrite,
     )
 
-
-def initial_dataset(raw_dir: str, channel_name: str):
-    """
-    Initial dataset.
-    :param raw_dir:         Path to directory containing channels.
-    :param channel_name:    Channel name.
-    :return:                Dataset.
-    """
-    files = []
-    channels = []
-    channel_dir = os.path.join(raw_dir, channel_name)
-    chunk_dirs = glob.glob(os.path.join(channel_dir, "*"))
-    for chunk_dir in chunk_dirs:
-        video_paths = glob.glob(os.path.join(chunk_dir, "pyactive", "*.avi"))
-        for video_path in video_paths:
-            files.append(video_path)
-            channels.append(channel_name)
-    return {
-        "file": files,
-    }
-
-
-def main(args: Args):
-    """
-    Main function.
-    """
-    with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().strip().split()
-
+    print("\n" + "#" * 50 + " Slicing " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
-        clean_up(channel_name, [args.visual_dir, args.audio_dir], args.overwrite)
+        clean_up(channel_name, [visual_dir, audio_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
-        prev_stage_dir = os.path.join(args.prev_stage_dir, channel_name)
+        print("Preparing dataset...")
+        prev_stage_dir = os.path.join(args.active_speaker_dir, channel_name)
         if not os.path.exists(prev_stage_dir):
             print(f"Channel {channel_name} does not exist.")
             continue
-        dataset = Dataset.from_dict(initial_dataset(args.prev_stage_dir, channel_name))
+        dataset = Dataset.from_dict(initial_dataset(prev_stage_dir, channel_name))
 
         # Extract audio and visual.
-        logger.info("Extracting audio and visual from dataset...")
-        print("Number of samples before slicing:", dataset.num_rows)
+        print("Extracting audio and visual from dataset...")
         dataset = dataset.map(
-            args.separator.process_batch,
-            fn_kwargs={"channel_name": channel_name},
+            separator.process_batch,
             batched=True, batch_size=args.batch_size,
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
             remove_columns=["file"],
         )
-        print("Number of samples after slicing:", dataset.num_rows)
 
         # Check number of samples.
-        logger.info("Checking number of samples...")
-        num_visual_samples = len(os.listdir(os.path.join(args.visual_dir, channel_name)))
+        print("Checking number of samples...")
+        num_visual_samples = len(os.listdir(os.path.join(visual_dir, channel_name)))
         assert num_visual_samples == dataset.num_rows, \
             f"{channel_name} - Number of visual samples does not match that in dataset."
-        num_audio_samples = len(os.listdir(os.path.join(args.audio_dir, channel_name)))
+        num_audio_samples = len(os.listdir(os.path.join(audio_dir, channel_name)))
         assert num_audio_samples == dataset.num_rows, \
             f"{channel_name} - Number of audio samples does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
-        dataset.save_to_disk(
-            os.path.join(args.cur_stage_dir, channel_name),
-            num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
+        print("Saving dataset...")
+        dataset.to_pandas().to_json(
+            os.path.join(cur_stage_dir, channel_name + ".json"),
+            orient="records",
         )
         dataset.cleanup_cache_files()
 
 
 if __name__ == "__main__":
-    main(Args())
+    main(parse_args())

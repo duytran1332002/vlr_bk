@@ -17,15 +17,17 @@ class Transcriber(Processor):
     def __init__(
         self,
         repo_id: str,
+        denoised_dir: str,
+        transcript_dir: str,
         device: str = "cuda",
-        transcript_dir: str = None,
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
         :param model_path:          Path to model.
         :param lm_gram_name:        Language model name.
-        :param device:              Device to use.
+        :param denoised_dir:        Path to directory containing denoised sound files.
         :param transcript_dir:      Path to directory containing transcripts.
+        :param device:              Device to use.
         :param overwrite:           Overwrite existing files.
         """
         # Load the model and the processor.
@@ -50,10 +52,11 @@ class Transcriber(Processor):
                 zip_ref.extractall(os.path.dirname(lm_zip_path))
         self.lm = self.get_lm_decoder(lm_path)
 
+        self.denoised_dir = denoised_dir
         self.transcript_dir = transcript_dir
         self.overwrite = overwrite
 
-    def get_lm_decoder(self, lm_path: str):
+    def get_lm_decoder(self, lm_path: str) -> BeamSearchDecoderCTC:
         """
         Get language model decoder
         :param lm_path:     language model path.
@@ -81,18 +84,21 @@ class Transcriber(Processor):
                                        language_model=LanguageModel(lm_model))
         return decoder
 
-    def process_sample(self, sample: dict, channel_name: str):
+    def process_sample(self, sample: dict) -> dict:
         """
         Transcribe for a sample.
         :param sample:          Audio sample.
-        :param channel_name:    Channel name.
         :return:                Sample with path to transcript.
         """
-        id = sample["id"]
-        transcript_path = os.path.join(self.transcript_dir, channel_name, f"{id}.txt")
+        denoised_path = os.path.join(
+            self.denoised_dir, sample["channel"], sample["id"] + ".wav"
+        )
+        transcript_path = os.path.join(
+            self.transcript_dir, sample["channel"], sample["id"] + ".txt"
+        )
 
         if self.overwrite or not os.path.exists(transcript_path):
-            audio_array, sampling_rate = torchaudio.load(sample["audio"]["path"])
+            audio_array, sampling_rate = torchaudio.load(denoised_path)
 
             transcript = self.transcribe(
                 audio_array=audio_array.numpy(),
@@ -101,19 +107,16 @@ class Transcriber(Processor):
 
             if len(transcript) > 0:
                 with open(transcript_path, "w") as f:
-                    print(transcript, file=f)
+                    print(transcript.strip(), file=f)
             else:
-                transcript_path = None
-
-        sample["audio"]["path"] = os.path.basename(sample["audio"]["path"])
-        sample["transcript"] = os.path.basename(transcript_path)
+                sample["id"] = None
         return sample
 
     def transcribe(
         self, audio_array: np.ndarray,
         sampling_rate: int = 16000,
         beam_width: int = 500,
-    ):
+    ) -> str:
         """
         Transcribe audio with time offset from audio array.
         :param audio_array:     audio array.

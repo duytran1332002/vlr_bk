@@ -3,88 +3,122 @@ import sys
 
 sys.path.append(os.getcwd())
 
-from dataclasses import dataclass
-from logging import getLogger
-from datasets import load_from_disk
+import argparse
+from datasets import load_dataset, disable_caching
 from tqdm import tqdm
 from vlr.data.processors.denoiser import Denoiser
 from vlr.data.utils.tools import clean_up
 
 
-logger = getLogger()
+disable_caching()
 
 
-@dataclass
-class Args:
-    """
-    Data processing arguments.
-    """
-    # Path to directory of previous stage.
-    prev_stage_dir = "/mnt/d/Projects/sandboxes/vlr/slicing"    # Change this.
-    # Path to directory pf current stage.
-    cur_stage_dir = "/mnt/d/Projects/sandboxes/vlr/denoising"   # Change path, but keep the dir name.
-    # Path to directory containing denoised sound files.
-    denoised_dir = "/mnt/d/Projects/sandboxes/vlr/denoised"   # Change path, but keep the dir name.
-    # Path to file containing channel names.
-    channel_names_path = "/mnt/d/Projects/sandboxes/vlr/channels.txt"   # Change this.
-
-    batch_size = 40   # Change this if necessary.
-    num_proc = -1    # Change this if necessary. -1 means using all available CPUs.
-    overwrite = False   # Change this if necessary.
-
-    denoiser = Denoiser(
-        denoised_dir=denoised_dir,
-        sampling_rate=16000,
-        overwrite=overwrite,
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--data-dir",
+        type=str,
+        required=True,
+        help="Path to data directory.",
     )
+    parser.add_argument(
+        "--channel-names-path",
+        type=str,
+        default=None,
+        help="Path to file containing channel names.",
+    )
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Batch size.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Overwrite existing files.",
+    )
+    return parser.parse_args()
 
 
-def main(args: Args):
+def main(args: argparse.Namespace):
     """
     Main function.
     """
-    with open(args.channel_names_path, "r") as f:
-        channel_names = f.read().strip().split()
+    if not os.path.exists(args.data_dir):
+        print(f"Directory {args.data_dir} does not exist.")
+        return
+    audio_dir = os.path.join(args.data_dir, "audio")
+    if not os.path.exists(audio_dir):
+        print(f"Directory {audio_dir} does not exist.")
+        return
+    prev_stage_dir = os.path.join(args.data_dir, "stage_1")
+    if not os.path.exists(prev_stage_dir):
+        print(f"Directory {prev_stage_dir} does not exist.")
+        return
 
+    denoised_dir = os.path.join(args.data_dir, "denoised")
+    if not os.path.exists(denoised_dir):
+        os.makedirs(denoised_dir)
+    cur_stage_dir = os.path.join(args.data_dir, "stage_2")
+    if not os.path.exists(cur_stage_dir):
+        os.makedirs(cur_stage_dir)
+
+    if args.channel_names_path:
+        with open(args.channel_names_path, "r") as f:
+            channel_names = f.read().strip().split()
+    else:
+        channel_names = os.listdir(audio_dir)
+
+    denoiser = Denoiser(
+        audio_dir=audio_dir,
+        denoised_dir=denoised_dir,
+        sampling_rate=16000,
+        overwrite=args.overwrite,
+    )
+
+    print("\n" + "#" * 50 + " Denoising " + "#" * 50)
     for channel_name in tqdm(
         channel_names,
         desc="Processing channels",
         total=len(channel_names),
         unit="channel"
     ):
+        print("-" * 20 + f" Processing {channel_name} " + "-" * 20)
         # Prepare save directory.
-        logger.info("Cleaning up old directories...")
-        clean_up(channel_name, [args.denoised_dir], args.overwrite)
+        clean_up(channel_name, [denoised_dir], args.overwrite)
 
         # Get dataset.
-        logger.info("Preparing dataset...")
-        prev_stage_dir = os.path.join(args.prev_stage_dir, channel_name)
-        if not os.path.exists(prev_stage_dir):
+        print("Preparing dataset...")
+        prev_stage_path = os.path.join(prev_stage_dir, channel_name + ".json")
+        if not os.path.exists(prev_stage_path):
             print(f"Channel {channel_name} does not exist.")
             continue
-        dataset = load_from_disk(prev_stage_dir)
+        dataset = load_dataset(
+            "json", data_files=prev_stage_path, split="train",
+        )
 
         # Denoise audio.
-        logger.info("Denoising audio...")
+        print("Denoising audio...")
         dataset = dataset.map(
-            args.denoiser.process_batch,
-            fn_kwargs={"channel_name": channel_name},
+            denoiser.process_batch,
             batched=True,
             batch_size=args.batch_size,
         )
 
         # Check number of samples.
-        assert len(os.listdir(os.path.join(args.denoised_dir, channel_name))) == dataset.num_rows, \
+        assert len(os.listdir(os.path.join(denoised_dir, channel_name))) == dataset.num_rows, \
             f"{channel_name} - Number of denoised samples does not match that in dataset."
 
         # Save dataset.
-        logger.info("Saving dataset...")
-        dataset.save_to_disk(
-            os.path.join(args.cur_stage_dir, channel_name),
-            num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
+        print("Saving dataset...")
+        dataset.to_pandas().to_json(
+            os.path.join(cur_stage_dir, channel_name + ".json"),
+            orient="records",
         )
         dataset.cleanup_cache_files()
 
 
 if __name__ == "__main__":
-    main(Args())
+    main(parse_args())

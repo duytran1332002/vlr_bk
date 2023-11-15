@@ -10,15 +10,18 @@ class Cropper(Processor):
     This class is used to crop mouth region.
     """
     def __init__(
-        self, mouth_dir: str,
+        self, visual_dir: str,
+        mouth_dir: str,
         min_detection_confidence: float = 0.9,
         overwrite: bool = False,
-    ):
+    ) -> None:
         """
+        :param visual_dir:                  Path to directory with video files.
         :param mouth_dir:                   Path to directory with mouth region.
         :param min_detection_confidence:    Minimum confidence value for face detection.
         :param overwrite:                   Overwrite existing files.
         """
+        self.visual_dir = visual_dir
         self.mouth_dir = mouth_dir
         self.face_detector = mp.solutions.face_detection.FaceDetection(
             min_detection_confidence=min_detection_confidence
@@ -26,17 +29,18 @@ class Cropper(Processor):
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         self.overwrite = overwrite
 
-    def process_sample(self, sample: dict, channel_name: str):
+    def process_sample(self, sample: dict) -> dict:
         """
         Crop mouth region in video.
         :param batch:           Sample.
-        :param channel_name:    Channel name.
         :return:                Sample with path to video of cropped mouth region.
         """
-        id = sample["id"]
-        visual_path = sample["visual"]["path"]
-        fps = sample["visual"]["fps"]
-        mouth_path = os.path.join(self.mouth_dir, channel_name, f"{id}-mouth.mp4")
+        visual_path = os.path.join(
+            self.visual_dir, sample["channel"], sample["id"] + ".mp4"
+        )
+        mouth_path = os.path.join(
+            self.mouth_dir, sample["channel"], sample["id"] + ".mp4"
+        )
 
         try:
             if self.overwrite or not os.path.exists(mouth_path):
@@ -49,20 +53,19 @@ class Cropper(Processor):
                     mouths.append(self.crop_mouth(frame))
 
                 video_writer = cv2.VideoWriter(
-                    mouth_path, self.fourcc, fps, (frame_width, frame_height)
+                    mouth_path, self.fourcc, sample["fps"], (frame_width, frame_height)
                 )
                 for mouth in mouths:
                     mouth = cv2.resize(mouth, (frame_width, frame_height))
                     video_writer.write(mouth)
                 video_writer.release()
                 cap.release()
-            sample["visual"]["path"] = mouth_path
         except Exception:
-            sample["visual"]["path"] = None
+            sample["id"] = None
 
         return sample
 
-    def get_frames(self, cap: cv2.VideoCapture):
+    def get_frames(self, cap: cv2.VideoCapture) -> np.ndarray:
         """
         Get frames from sample.
         :param cap:     Video capture.
@@ -73,7 +76,7 @@ class Cropper(Processor):
                 break
             yield frame
 
-    def crop_mouth(self, frame: np.ndarray):
+    def crop_mouth(self, frame: np.ndarray) -> np.ndarray:
         """
         Crop mouth region in frame.
         :param frame:   Frame.
