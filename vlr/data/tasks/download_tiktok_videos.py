@@ -7,10 +7,28 @@ from os import path
 import tqdm
 
 import aiohttp
+import argparse
 from tiktokapipy.async_api import AsyncTikTokAPI
 from tiktokapipy.models.video import Video
 
 
+def args_parser():
+    """
+    Extract face and active speaker from raw video arguments.
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Download video from tiktok.")
+    
+    parser.add_argument('--channel_path',           type=str,
+                        default=None,  help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+    
+    parser.add_argument('--save_path',           type=str,
+                        default=None,  help='Path for saving channel')
+    
+    args = parser.parse_args()
+
+    return args
 
 async def save_slideshow(video: Video):
     # this filter makes sure the images are padded to all the same size
@@ -100,11 +118,21 @@ async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
 
 
 if __name__ == "__main__":
-    user_id = 'vtcnow'
-    directory = '/home/duytran/Downloads/new_raw_video'
+    args = args_parser()
 
-    output_path = os.path.join(directory, user_id)
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    # read channel list
+    with open(args.channel_path, 'r') as f:
+        lines = f.readlines()
+    channels = [line.strip().split(',') for line in lines]
+    channels = [(channel[0], int(channel[1])) for channel in channels]
 
-    asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
+    for user_id, num_videos in channels:
+        output_path = os.path.join(args.save_path, user_id)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        if num_videos > 0:
+            asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path, video_limit=int(num_videos)))
+        else:
+            asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
+
+
