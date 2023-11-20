@@ -1,0 +1,5 @@
+defaults:
+  - _self_
+root_dir: "/home/duytran/Downloads/vlr/"
+train_dir: "cropping"
+test_size: 0.2
