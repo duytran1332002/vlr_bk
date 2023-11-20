@@ -75,6 +75,9 @@ class ModelModule(LightningModule):
         token_id = sample["target"]
         actual = self.text_transform.post_process(token_id)
 
+        print(f"Predicted: {predicted}")
+        print(f"Actual: {actual}")
+
         self.total_edit_distance += compute_word_level_distance(actual, predicted)
         self.total_length += len(actual.split())
         return

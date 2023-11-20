@@ -36,12 +36,15 @@ def main(cfg):
     datamodule = DataModule(cfg)
     trainer = Trainer(
         **cfg.trainer,
-        logger=WandbLogger(name=cfg.exp_name, project="vietnamese-lr"),
+        #logger=WandbLogger(name=cfg.exp_name, project="vietnamese-lr"),
         callbacks=callbacks,
         accelerator="gpu"
     )
     try:
-        trainer.fit(model=modelmodule, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+        if cfg.ckpt_path != '':
+            trainer.fit(model=modelmodule, datamodule=datamodule, ckpt_path=cfg.ckpt_path)
+        else:
+            trainer.fit(model=modelmodule, datamodule=datamodule)
         ensemble(cfg)
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt by user detected. Stopping...")
