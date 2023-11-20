@@ -36,7 +36,7 @@ def main(cfg):
     datamodule = DataModule(cfg)
     trainer = Trainer(
         **cfg.trainer,
-        #logger=WandbLogger(name=cfg.exp_name, project="vietnamese-lr"),
+        logger=WandbLogger(name=cfg.exp_name, project="vlr_temp"),
         callbacks=callbacks,
         accelerator="gpu"
     )
