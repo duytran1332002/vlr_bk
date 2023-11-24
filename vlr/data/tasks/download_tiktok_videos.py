@@ -7,10 +7,29 @@ from os import path
 import tqdm
 
 import aiohttp
+import argparse
+from fp.fp import FreeProxy
 from tiktokapipy.async_api import AsyncTikTokAPI
 from tiktokapipy.models.video import Video
 
 
+def args_parser():
+    """
+    Extract face and active speaker from raw video arguments.
+    """
+
+    parser = argparse.ArgumentParser(
+        description="Download video from tiktok.")
+    
+    parser.add_argument('--channel_path',           type=str,
+                        default=None,  help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+    
+    parser.add_argument('--save_path',           type=str,
+                        default=None,  help='Path for saving channel')
+    
+    args = parser.parse_args()
+
+    return args
 
 async def save_slideshow(video: Video):
     # this filter makes sure the images are padded to all the same size
@@ -83,7 +102,8 @@ async def download_video(link, output_path):
         
 
 async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
-    async with AsyncTikTokAPI() as api:
+    
+    async with AsyncTikTokAPI(navigation_timeout=0) as api:
         if video_limit is not None:
             user = await api.user(user_id, video_limit=video_limit)
             pbar = tqdm.tqdm(total=video_limit)
@@ -98,13 +118,41 @@ async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
         pbar.close()
         
 
-
 if __name__ == "__main__":
-    user_id = 'vtcnow'
-    directory = '/home/duytran/Downloads/new_raw_video'
+    args = args_parser()
 
-    output_path = os.path.join(directory, user_id)
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    # read channel list
+    with open(args.channel_path, 'r') as f:
+        lines = f.readlines()
+    channels = [line.strip().split(',') for line in lines]
+    channels = [(channel[0], int(channel[1])) for channel in channels]
 
-    asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
+    for user_id, num_videos in channels:
+        output_path = os.path.join(args.save_path, user_id)
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        # if not os.path.exists(output_path):
+        #     os.makedirs(output_path)
+        # if num_videos > 0:
+        #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path video_limit=int(num_videos)))
+        # else:
+        #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
+        # read video list
+        with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
+            lines = f.readlines()
+        videos = [line.strip() for line in lines]
+        if num_videos > 0:
+            videos = videos[:num_videos]
+        pbar = tqdm.tqdm(total=len(videos))
+        for video in videos:
+            asyncio.run(download_video(link=video, output_path=output_path))
+            pbar.update(1)
+            pbar.set_description(f"Downloaded {video}")
+        pbar.close()
+
+
+
+    
+
+
+

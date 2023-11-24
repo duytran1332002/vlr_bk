@@ -34,7 +34,6 @@ def load_audio(path):
     """
     rtype: torch, T x 1
     """
-    print(path)
     waveform, sample_rate = torchaudio.load(path, normalize=True)
     return waveform.transpose(1, 0)
 
@@ -67,12 +66,12 @@ class AVDataset(torch.utils.data.Dataset):
         # 'audio': {'path': 'audio_path', 'sampling_rate': 16000}, \
         # 'duration': 3, 'transcript': 'transcript_path'}
         item = self.dataset[int(idx)]
+        channel = item["visual"]["path"].split("/")[-2]
 
         # load text and transform it into token ids
-        text_path = item["transcript"]
-        text = open(text_path, encoding="utf8").read().strip()
+        transcript_path =  os.path.join(self.root_dir, "transcripts" + "/" + channel + "/" + item["id"] + ".txt")
+        text = open(transcript_path , encoding="utf8").read().strip()
         token_id = self.text_transform.tokenize(text)
-        channel = item["visual"]["path"].split("/")[-2]
 
         video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + "-mouth" + ".mp4")
         audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + "-denoised" + ".wav")
@@ -125,12 +124,12 @@ class AVDatasetIterable(torch.utils.data.IterableDataset):
         # 'duration': 3, 'transcript': 'transcript_path'}
         for idx in range(len(self.dataset)):
             item = self.dataset[int(idx)]
-
-            # load text and transform it into token ids
-            text_path = item["transcript"]
-            text = open(text_path, encoding="utf8").read().strip()
-            token_id = self.text_transform.tokenize(text)
             channel = item["visual"]["path"].split("/")[-2]
+            
+            # load text and transform it into token ids
+            transcript_path =  os.path.join(self.root_dir, "transcripts" + "/" + channel + "/" + item["id"] + ".txt")
+            text = open(transcript_path , encoding="utf8").read().strip()
+            token_id = self.text_transform.tokenize(text)
 
             video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + "-mouth" + ".mp4")
             audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + "-denoised" + ".wav")

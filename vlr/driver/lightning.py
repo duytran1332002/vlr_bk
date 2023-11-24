@@ -1,7 +1,7 @@
 import os
 import torch
 import torchaudio
-from driver.cosine import WarmupCosineScheduler
+from vlr.driver.warmup import WarmupCosineScheduler, WarmupPolynomialScheduler, WarmupStepScheduler
 from datamodule.transforms import TextTransform
 
 from pytorch_lightning import LightningModule
@@ -44,7 +44,28 @@ class ModelModule(LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW([{"name": "model", "params": self.model.parameters(), "lr": self.cfg.optimizer.lr}], weight_decay=self.cfg.optimizer.weight_decay, betas=(0.9, 0.98))
-        scheduler = WarmupCosineScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, len(self.trainer.datamodule.dataset["train"]))
+        total_iter_per_epoch = (len(self.trainer.datamodule.dataset["train"]) // (self.cfg.data.batch_size * self.trainer.accumulate_grad_batches))
+        
+        if self.cfg.optimizer.scheduler == "cosine":
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=self.cfg.trainer.max_epochs * total_iter_per_epoch)
+        elif self.cfg.optimizer.scheduler == "linear":
+            scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.cfg.trainer.max_epochs * total_iter_per_epoch, power=2.0)
+        elif self.cfg.optimizer.scheduler == "step":
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=total_iter_per_epoch, gamma=0.98)
+        elif self.cfg.optimizer.scheduler == "poly":
+            scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.cfg.trainer.max_epochs * total_iter_per_epoch, power=2.0)
+        
+        # warmup
+        if self.cfg.optimizer.warmup_epochs > 0:
+            if self.cfg.optimizer.scheduler == "cosine":
+                scheduler = WarmupCosineScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch)
+            elif self.cfg.optimizer.scheduler == "poly":
+                scheduler = WarmupPolynomialScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, power=2.0)
+            elif self.cfg.optimizer.scheduler == "linear":
+                scheduler = WarmupPolynomialScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, power=1.0)
+            elif self.cfg.optimizer.scheduler == "step":
+                scheduler = WarmupStepScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, gamma=0.98, step_size=total_iter_per_epoch)
+        
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         return [optimizer], [scheduler]
 
@@ -74,6 +95,9 @@ class ModelModule(LightningModule):
 
         token_id = sample["target"]
         actual = self.text_transform.post_process(token_id)
+
+        print(f"Predicted: {predicted}")
+        print(f"Actual: {actual}")
 
         self.total_edit_distance += compute_word_level_distance(actual, predicted)
         self.total_length += len(actual.split())

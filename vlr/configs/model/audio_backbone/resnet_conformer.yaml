@@ -17,7 +17,7 @@ dheads: ${model.audio_backbone.aheads}
 dunits: 3072
 dlayers: 6
 lsm_weight: 0.1
-transformer_length_normalized_loss: False
+transformer_length_normalized_loss: True
 mtlalpha: 0.1
 ctc_type: builtin
 rel_pos_type: latest
