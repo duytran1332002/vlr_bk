@@ -72,7 +72,7 @@ def main(args: argparse.Namespace) -> None:
         channel_names = os.listdir(denoised_dir)
 
     transcriber = Transcriber(
-        repo_id="nguyenvulebinh/wav2vec2-base-vietnamese-250h",
+        repo_id="nguyenvulebinh/wav2vec2-large-vi-vlsp2020",
         denoised_dir=denoised_dir,
         transcript_dir=transcript_dir,
         device="cuda",
