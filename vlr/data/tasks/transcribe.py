@@ -53,7 +53,7 @@ def main(args: argparse.Namespace) -> None:
     if not os.path.exists(denoised_dir):
         print(f"Directory {denoised_dir} does not exist.")
         return
-    prev_stage_dir = os.path.join(args.data_dir, "stage_2")
+    prev_stage_dir = os.path.join(args.data_dir, "stage_3")
     if not os.path.exists(prev_stage_dir):
         print(f"Directory {prev_stage_dir} does not exist.")
         return
@@ -61,7 +61,7 @@ def main(args: argparse.Namespace) -> None:
     transcript_dir = os.path.join(args.data_dir, "transcripts")
     if not os.path.exists(transcript_dir):
         os.makedirs(transcript_dir)
-    cur_stage_dir = os.path.join(args.data_dir, "stage_3")
+    cur_stage_dir = os.path.join(args.data_dir, "stage_4")
     if not os.path.exists(cur_stage_dir):
         os.makedirs(cur_stage_dir)
 
@@ -106,8 +106,8 @@ def main(args: argparse.Namespace) -> None:
             transcriber.process_sample,
         )
 
-        # Filter out samples with empty transcripts.
-        print("Filtering out samples with empty transcripts...")
+        # Filter out samples with non-empty transcripts.
+        print("Filtering out samples with non-empty transcripts...")
         dataset = dataset.filter(
             lambda sample: sample["id"] is not None,
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),

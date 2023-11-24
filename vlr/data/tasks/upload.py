@@ -84,7 +84,7 @@ def main(args: argparse.Namespace):
         total=len(channel_names),
         unit="channel"
     ):
-        print("\n" + "#" * 50 + f" Processing {channel_name} " + "#" * 50)
+        print("#" * 50 + f" Processing {channel_name} " + "#" * 50)
         for relative_data_dir in tqdm(
             relative_data_dirs,
             desc="Processing directories",

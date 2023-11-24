@@ -53,7 +53,7 @@ def main(args: argparse.Namespace) -> None:
     if not os.path.exists(visual_dir):
         print(f"Directory {visual_dir} does not exist.")
         return
-    prev_stage_dir = os.path.join(args.data_dir, "stage_3")
+    prev_stage_dir = os.path.join(args.data_dir, "stage_4")
     if not os.path.exists(prev_stage_dir):
         print(f"Directory {prev_stage_dir} does not exist.")
         return
@@ -61,7 +61,7 @@ def main(args: argparse.Namespace) -> None:
     mouth_dir = os.path.join(args.data_dir, "mouths")
     if not os.path.exists(mouth_dir):
         os.makedirs(mouth_dir)
-    cur_stage_dir = os.path.join(args.data_dir, "stage_4")
+    cur_stage_dir = os.path.join(args.data_dir, "stage_5")
     if not os.path.exists(cur_stage_dir):
         os.makedirs(cur_stage_dir)
 

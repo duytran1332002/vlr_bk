@@ -19,6 +19,7 @@ class Denoiser(Processor):
         overwrite: bool = False,
     ) -> None:
         """
+        :param audio_dir:       Path to directory containing sound files.
         :param denoised_dir:    Path to directory containing denoised sound files.
         :param sampling_rate:   Sampling rate.
         :param overwrite:       Overwrite existing files.
