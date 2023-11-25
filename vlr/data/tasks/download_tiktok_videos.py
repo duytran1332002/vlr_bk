@@ -128,9 +128,7 @@ if __name__ == "__main__":
     channels = [(channel[0], int(channel[1])) for channel in channels]
 
     for user_id, num_videos in channels:
-        output_path = os.path.join(args.save_path, user_id)
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        
         # if not os.path.exists(output_path):
         #     os.makedirs(output_path)
         # if num_videos > 0:
@@ -138,17 +136,37 @@ if __name__ == "__main__":
         # else:
         #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
         # read video list
-        with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
-            lines = f.readlines()
-        videos = [line.strip() for line in lines]
-        if num_videos > 0:
-            videos = videos[:num_videos]
-        pbar = tqdm.tqdm(total=len(videos))
-        for video in videos:
-            asyncio.run(download_video(link=video, output_path=output_path))
-            pbar.update(1)
-            pbar.set_description(f"Downloaded {video}")
-        pbar.close()
+        try:
+            
+            with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
+                lines = f.readlines()
+            videos = [line.strip() for line in lines]
+            if num_videos > 0 and len(videos) > num_videos:
+                videos = videos[:num_videos]
+
+            output_path = os.path.join(args.save_path, user_id)
+
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            else:
+                # check if the channel has been downloaded
+                if len(os.listdir(output_path)) == len(videos):
+                    print(f"Channel {user_id} has been downloaded.")
+                continue
+
+            pbar = tqdm.tqdm(total=len(videos))
+            for video in videos:
+                asyncio.run(download_video(link=video, output_path=output_path))
+                pbar.update(1)
+                pbar.set_description(f"Downloaded {video}")
+            pbar.close()
+
+        except FileNotFoundError:
+            print(f"File {user_id}.txt not found.")
+            continue
+        except Exception as e:
+            print(f"Error: {e}")
+            continue
 
 
 

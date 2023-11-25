@@ -1,9 +1,10 @@
-import hydra
-from omegaconf import DictConfig, OmegaConf
+from tiktokapipy.async_api import AsyncTikTokAPI
+import asyncio
 
-@hydra.main(config_path="/home/duytran/Desktop/vlr/vlr/configs", config_name="config")
-def my_app(cfg : DictConfig) -> None:
-    print(OmegaConf.to_yaml(cfg))
+async def do_something():
+    async with AsyncTikTokAPI(headless="new") as api:
+        user = await api.user("huydao")
+        async for video in user.videos:
+            print(video)
 
-if __name__ == "__main__":
-    my_app()
+asyncio.run(do_something())

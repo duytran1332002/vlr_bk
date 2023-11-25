@@ -8,8 +8,8 @@ if __name__ == "__main__":
     # By default, files are uploaded at the root of the repo
 
     api.upload_file(
-        path_or_fileobj="/home/duytran/Desktop/vlr/pretrain_model/model_avg_10_v2.pth",
-        path_in_repo="phase1/visual_200h_10epochs_pretrained.pth",
+        path_or_fileobj="/home/duytran/Desktop/vlr/outputs/1st_200h_audio_scratch/model_avg_10.pth",
+        path_in_repo="phase1/audio_200h_10epochs_scratch.pth",
         repo_id="fptu/vlr-e2e",
         repo_type="model",
     )
