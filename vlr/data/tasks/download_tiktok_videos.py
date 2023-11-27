@@ -31,7 +31,7 @@ def args_parser():
 
     return args
 
-async def save_slideshow(video: Video):
+async def save_slideshow(directory, video: Video):
     # this filter makes sure the images are padded to all the same size
     vf = "\"scale=iw*min(1080/iw\,1920/ih):ih*min(1080/iw\,1920/ih)," \
          "pad=1080:1920:(1080-iw)/2:(1920-ih)/2," \
@@ -88,12 +88,13 @@ async def save_video(video: Video, api: AsyncTikTokAPI):
         # Creating this header tricks TikTok into thinking it made the request itself
         async with session.get(video.video.download_addr, headers={"referer": "https://www.tiktok.com/"}) as resp:
             return io.BytesIO(await resp.read())
-        
+
+
 async def download_video(link, output_path):
     async with AsyncTikTokAPI() as api:
         video: Video = await api.video(link)
         if video.image_post:
-            downloaded = await save_slideshow(video)
+            downloaded = await save_slideshow(directory=output_path, video=video)
         else:
             downloaded = await save_video(video, api)
         # save the video to a file
@@ -128,9 +129,7 @@ if __name__ == "__main__":
     channels = [(channel[0], int(channel[1])) for channel in channels]
 
     for user_id, num_videos in channels:
-        output_path = os.path.join(args.save_path, user_id)
-        if not os.path.exists(output_path):
-            os.makedirs(output_path)
+        
         # if not os.path.exists(output_path):
         #     os.makedirs(output_path)
         # if num_videos > 0:
@@ -138,17 +137,46 @@ if __name__ == "__main__":
         # else:
         #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
         # read video list
-        with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
-            lines = f.readlines()
-        videos = [line.strip() for line in lines]
-        if num_videos > 0:
-            videos = videos[:num_videos]
-        pbar = tqdm.tqdm(total=len(videos))
-        for video in videos:
-            asyncio.run(download_video(link=video, output_path=output_path))
-            pbar.update(1)
-            pbar.set_description(f"Downloaded {video}")
-        pbar.close()
+        try:
+            
+            with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
+                lines = f.readlines()
+            videos = [line.strip() for line in lines]
+            num_download = 0
+            if num_videos > 0 and num_videos < len(videos):
+                num_download = num_videos
+            else:
+                num_download = len(videos)
+
+            output_path = os.path.join(args.save_path, user_id)
+
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            else:
+                # check if the channel has been downloaded
+                if len(os.listdir(output_path)) == num_download:
+                    print(f"Channel {user_id} has been downloaded.")
+                    continue
+
+            pbar = tqdm.tqdm(total=num_download)
+
+            for video in videos:
+                try:
+                    asyncio.run(download_video(link=video, output_path=output_path))
+                    pbar.update(1)
+                    pbar.set_description(f"Downloaded {video}")
+                    if pbar.n == num_download:
+                        break
+                except Exception as e:
+                    print(f"Error when downloading video {video}")
+            pbar.close()
+
+        except FileNotFoundError:
+            print(f"File {user_id}.txt not found.")
+            continue
+        # except Exception as e:
+        #     print(f"Error: {e}")
+        #     continue
 
 
 

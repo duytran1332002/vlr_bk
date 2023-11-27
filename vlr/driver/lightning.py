@@ -51,7 +51,7 @@ class ModelModule(LightningModule):
         elif self.cfg.optimizer.scheduler == "linear":
             scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.cfg.trainer.max_epochs * total_iter_per_epoch, power=2.0)
         elif self.cfg.optimizer.scheduler == "step":
-            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=total_iter_per_epoch, gamma=0.98)
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=total_iter_per_epoch / 2, gamma=0.98)
         elif self.cfg.optimizer.scheduler == "poly":
             scheduler = torch.optim.lr_scheduler.PolynomialLR(optimizer, total_iters=self.cfg.trainer.max_epochs * total_iter_per_epoch, power=2.0)
         
@@ -64,7 +64,7 @@ class ModelModule(LightningModule):
             elif self.cfg.optimizer.scheduler == "linear":
                 scheduler = WarmupPolynomialScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, power=1.0)
             elif self.cfg.optimizer.scheduler == "step":
-                scheduler = WarmupStepScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, gamma=0.98, step_size=total_iter_per_epoch)
+                scheduler = WarmupStepScheduler(optimizer, self.cfg.optimizer.warmup_epochs, self.cfg.trainer.max_epochs, total_iter_per_epoch, gamma=0.98, step_size=total_iter_per_epoch / 2)
         
         scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
         return [optimizer], [scheduler]

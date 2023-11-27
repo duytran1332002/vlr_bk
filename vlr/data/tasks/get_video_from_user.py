@@ -25,7 +25,7 @@ def args_parser():
 def scroll_down_page(driver):
     scroll_pause_time = 2
     screen_height = driver.execute_script("return window.screen.height;")
-    i = 1
+    i = 0
     while True:
         driver.execute_script("window.scrollTo(0, {screen_height}*{i});".format(screen_height=screen_height, i=i))  
         i += 1
@@ -33,7 +33,6 @@ def scroll_down_page(driver):
         scroll_height = driver.execute_script("return document.body.scrollHeight;")  
         if (screen_height) * i > scroll_height:
             break 
-
 def get_user_video(user_id, save_path, time_sleep=10):
     # check if the user_id file exists
     # if it does, then we don't need to scrape the page again
@@ -53,6 +52,7 @@ def get_user_video(user_id, save_path, time_sleep=10):
 
     # scroll down the page
     scroll_down_page(driver)
+
 
     # this class may change, so make sure to inspect the page and find the correct class
     className = " css-1as5cen-DivWrapper e1cg0wnj1"
@@ -76,8 +76,9 @@ if __name__ == "__main__":
     # read channel list
     with open(args.channel_path, 'r') as f:
         lines = f.readlines()
-    channels = [line.strip().split(',') for line in lines]
+    channels = [line.strip().split(',') for line in lines]        
     channels = [(channel[0], int(channel[1])) for channel in channels]
+    
     for user_id, num_videos in channels:
         if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")):
             try:

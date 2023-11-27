@@ -117,6 +117,9 @@ def main(args):
     """
     # Prepare dataset.
     logger.info("Preparing dataset...")
+    if not os.path.exists(args.output_folder):
+        os.makedirs(args.output_folder)
+    
     un_file_list = get_dataset(args.video_folder_path, args.output_folder, args.video_extension)
     unf_files_num = len(un_file_list)
 
