@@ -15,29 +15,51 @@ if __name__ == "__main__":
     # )
 
     api.upload_file(
-        path_or_fileobj="/home/duytran/Downloads/active_speaker/lepthelittlekid_output.zip",
-        path_in_repo="active_speaker/lepthelittlekid_output.zip",
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/phucmapvlog_output.zip",
+        path_in_repo="active_speaker/phucmapvlog_output.zip",
         repo_id="fptu/vlr",
         repo_type="dataset",
     )
 
     api.upload_file(
-        path_or_fileobj="/home/duytran/Downloads/active_speaker/nqs.kinhte_output.zip",
-        path_in_repo="active_speaker/nqs.kinhte_output.zip",
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/ccamthao_output.zip",
+        path_in_repo="active_speaker/ccamthao_output.zip",
         repo_id="fptu/vlr",
         repo_type="dataset",
     )
 
     api.upload_file(
-        path_or_fileobj="/home/duytran/Downloads/active_speaker/wesleyn313_output.zip",
-        path_in_repo="active_speaker/wesleyn313_output.zip",
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/jaynguyen1101_output.zip",
+        path_in_repo="active_speaker/jaynguyen1101_output.zip",
         repo_id="fptu/vlr",
         repo_type="dataset",
     )
 
     api.upload_file(
-        path_or_fileobj="/home/duytran/Downloads/active_speaker/thayqueo_output.zip",
-        path_in_repo="active_speaker/thayqueo_output.zip",
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/tinhlong123_output.zip",
+        path_in_repo="active_speaker/tinhlong123_output.zip",
         repo_id="fptu/vlr",
         repo_type="dataset",
     )
+
+    api.upload_file(
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/chubandaugio_output.zip",
+        path_in_repo="active_speaker/chubandaugio_output.zip",
+        repo_id="fptu/vlr",
+        repo_type="dataset",
+    )
+
+    api.upload_file(
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/vantoi.calis_output.zip",
+        path_in_repo="active_speaker/vantoi.calis_output.zip",
+        repo_id="fptu/vlr",
+        repo_type="dataset",
+    )
+
+    api.upload_file(
+        path_or_fileobj="/home/duytran/Downloads/active_speaker/dangbeo9_output.zip",
+        path_in_repo="active_speaker/dangbeo9_output.zip",
+        repo_id="fptu/vlr",
+        repo_type="dataset",
+    )
+

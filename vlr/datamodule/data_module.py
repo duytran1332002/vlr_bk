@@ -54,7 +54,11 @@ class DataModule(LightningDataModule):
         self.cfg = cfg
         self.cfg.devices = torch.cuda.device_count()
         self.total_gpus = self.cfg.devices * self.cfg.trainer.num_nodes
-        self.dataset = load_dataset(os.path.join(self.cfg.data.dataset.root_dir, self.cfg.data.dataset.train_dir))
+
+        # read dataset
+        # list all file with full path
+        path = os.path.join(self.cfg.data.dataset.root_dir, self.cfg.data.dataset.train_dir)
+        self.dataset = load_dataset("json", data_files=[os.path.join(path, f) for f in os.listdir(path)])
         if self.cfg.data.select != -1:
             self.dataset["train"] = self.dataset["train"].select(range(self.cfg.data.select))
         # split dataset
