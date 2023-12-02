@@ -15,3 +15,9 @@ class Processor:
         Process batch of data.
         """
         raise NotImplementedError("Please implement this method in child classes")
+
+    def check_output(self):
+        """
+        Check output.
+        """
+        raise NotImplementedError("Please implement this method in child classes")
