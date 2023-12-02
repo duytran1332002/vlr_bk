@@ -28,6 +28,12 @@ def parse_args():
         help="Path to file or directory to upload.",
     )
     argparser.add_argument(
+        "--dest",
+        type=str,
+        required=True,
+        help="Path in repo.",
+    )
+    argparser.add_argument(
         "--channel-names-path",
         type=str,
         help="Path to file containing channel names to upload.",
@@ -35,7 +41,7 @@ def parse_args():
     argparser.add_argument(
         "--zip",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Whether to automatically zip the directory.",
     )
     argparser.add_argument(
@@ -53,21 +59,6 @@ def parse_args():
     return argparser.parse_args()
 
 
-def get_relative_data_dirs(src_dir: str):
-    """
-    Get data directories.
-    :param src:     Path to source directory.
-    :return:        Relative paths to data directories.
-    """
-    relative_data_dirs = []
-    for data_name in os.listdir(src_dir):
-        data_dir = os.path.join(src_dir, data_name)
-        if not os.path.isdir(data_dir):
-            continue
-        relative_data_dirs.append(data_name)
-    return relative_data_dirs
-
-
 def main(args: argparse.Namespace):
     """
     Main function.
@@ -75,8 +66,7 @@ def main(args: argparse.Namespace):
     with open(args.channel_names_path, "r") as f:
         channel_names = f.read().splitlines()
 
-    relative_data_dirs = get_relative_data_dirs(args.src)
-
+    print("#" * 50 + " Uploading " + "#" * 50)
     api = HfApi()
     for channel_name in tqdm(
         channel_names,
@@ -84,51 +74,48 @@ def main(args: argparse.Namespace):
         total=len(channel_names),
         unit="channel"
     ):
-        print("#" * 50 + f" Processing {channel_name} " + "#" * 50)
-        for relative_data_dir in tqdm(
-            relative_data_dirs,
-            desc="Processing directories",
-            total=len(relative_data_dirs),
-            unit="directory",
-            leave=False,
-        ):
-            print("-" * 20 + f" Processing {relative_data_dir} " + "-" * 20)
-            channel_dir = os.path.join(args.src, relative_data_dir, channel_name)
-            if not relative_data_dir.startswith("stage"):
-                if not os.path.exists(channel_dir):
-                    print(f"Channel {channel_name} does not exist in {relative_data_dir}.")
-                    continue
+        print("-" * 50 + f" Processing {channel_name} " + "-" * 50)
 
-                file_path = channel_dir + ".zip"
-                if args.zip or not os.path.exists(file_path):
-                    zip_dir(channel_dir, overwrite=args.overwrite)
+        src_path = os.path.join(args.src, channel_name)
+        if not os.path.basename(args.src).startswith("stage"):
+            if not os.path.exists(src_path):
+                print(f"Channel {channel_name} does not exist.")
+                continue
+            if args.zip:
+                zip_dir(src_path, overwrite=args.overwrite)
+                src_path = src_path + ".zip"
+        else:
+            src_path = src_path + ".json"
+            if not os.path.exists(src_path):
+                print(f"Channel {channel_name} does not exist.")
+                continue
 
-                path_in_repo = os.path.join(
-                    os.path.basename(args.src), relative_data_dir, channel_name + ".zip"
+        if os.path.isdir(src_path):
+            for file_name in os.listdir(src_path):
+                file_path = os.path.join(src_path, file_name)
+                api.upload_file(
+                    path_or_fileobj=file_path,
+                    path_in_repo=os.path.join(args.dest, channel_name, file_name),
+                    repo_id="fptu/vlrs_lab",
+                    repo_type="dataset",
+                    commit_message=f"chore: update {args.dest} directory",
+                    commit_description=f"Add {channel_name}",
+                    token=args.token,
                 )
-            else:
-                file_path = channel_dir + ".json"
-                if not os.path.exists(file_path):
-                    print(f"Channel {file_path} does not exist in {relative_data_dir}.")
-                    continue
-
-                path_in_repo = os.path.join(
-                    os.path.basename(args.src), relative_data_dir, channel_name + ".json"
-                )
-
+        else:
             api.upload_file(
-                path_or_fileobj=file_path,
-                path_in_repo=path_in_repo,
-                repo_id="fptu/vlr",
+                path_or_fileobj=src_path,
+                path_in_repo=os.path.join(args.dest, channel_name + ".zip"),
+                repo_id="fptu/vlrs_lab",
                 repo_type="dataset",
-                commit_message=f"chore: update {os.path.basename(relative_data_dir)} directory",
+                commit_message=f"chore: update {args.dest} directory",
                 commit_description=f"Add {channel_name}",
                 token=args.token,
             )
 
-            if args.clean_up and file_path.endswith("zip"):
-                os.remove(file_path)
-
+        if args.clean_up and src_path.endswith("zip"):
+            os.remove(src_path)
+        print("-" * (13 + len(channel_name) + 2 * 20))
 
 if __name__ == "__main__":
     main(parse_args())
