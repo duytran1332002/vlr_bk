@@ -30,7 +30,7 @@ class Cropper(Processor):
 
         self.mouth_landmark_idxes = [
             61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
-            291, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291
+            291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
         ]
 
     def process_sample(self, sample: dict) -> dict:
@@ -113,15 +113,15 @@ class Cropper(Processor):
         """
         face_landmarks = self.landmark_detector.process(frame).multi_face_landmarks
 
-        if face_landmarks and len(face_landmarks) == 1:
-            face_landmarks = face_landmarks[0]
+        if face_landmarks:
+            mouth_landmarks = np.array(face_landmarks[0].landmark)[self.mouth_landmark_idxes]
             max_x, max_y = 0, 0
             min_x, min_y = frame.shape[1], frame.shape[0]
-            for idx, landmark in enumerate(face_landmarks.landmark):
-                if idx in self.mouth_landmark_idxes:
-                    x, y = int(frame.shape[1] * landmark.x), int(frame.shape[0] * landmark.y)
-                    max_x, max_y = max(max_x, x), max(max_y, y)
-                    min_x, min_y = min(min_x, x), min(min_y, y)
+            for landmark in mouth_landmarks:
+                x = int(landmark.x * frame.shape[1])
+                y = int(landmark.y * frame.shape[0])
+                max_x, max_y = max(max_x, x), max(max_y, y)
+                min_x, min_y = min(min_x, x), min(min_y, y)
             max_x += padding
             max_y += padding
             min_x -= padding
