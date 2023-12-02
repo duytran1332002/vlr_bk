@@ -98,6 +98,7 @@ def main(args: argparse.Namespace):
         dataset = load_dataset(
             "json", data_files=prev_stage_path, split="train",
         )
+        num_samples_before = dataset.num_rows
 
         # Denoise audio.
         print("Denoising audio...")
@@ -106,10 +107,12 @@ def main(args: argparse.Namespace):
             batched=True,
             batch_size=args.batch_size,
         )
+        num_samples_after = dataset.num_rows
 
         # Check number of samples.
         assert len(os.listdir(os.path.join(denoised_dir, channel_name))) == dataset.num_rows, \
             f"{channel_name} - Number of denoised samples does not match that in dataset."
+        print(f"Number of samples lost: {num_samples_before - num_samples_after}")
 
         # Save dataset.
         print("Saving dataset...")

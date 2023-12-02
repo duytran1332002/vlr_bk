@@ -129,6 +129,7 @@ def main(args: argparse.Namespace):
             print(f"Channel {channel_name} does not exist.")
             continue
         dataset = Dataset.from_dict(initial_dataset(prev_stage_dir, channel_name))
+        num_samples_before = dataset.num_rows
 
         # Extract audio and visual.
         print("Extracting audio and visual from dataset...")
@@ -138,6 +139,7 @@ def main(args: argparse.Namespace):
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
             remove_columns=["file"],
         )
+        num_samples_after = dataset.num_rows
 
         # Check number of samples.
         print("Checking number of samples...")
@@ -147,6 +149,7 @@ def main(args: argparse.Namespace):
         num_audio_samples = len(os.listdir(os.path.join(audio_dir, channel_name)))
         assert num_audio_samples == dataset.num_rows, \
             f"{channel_name} - Number of audio samples does not match that in dataset."
+        print(f"Number of samples lost: {num_samples_before - num_samples_after}")
 
         # Save dataset.
         print("Saving dataset...")

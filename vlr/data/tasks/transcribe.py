@@ -99,6 +99,7 @@ def main(args: argparse.Namespace) -> None:
         dataset = load_dataset(
             "json", data_files=prev_stage_path, split="train",
         )
+        num_samples_before = dataset.num_rows
 
         # Transcribe.
         print("Transcribing...")
@@ -112,10 +113,12 @@ def main(args: argparse.Namespace) -> None:
             lambda sample: sample["id"] is not None,
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
         )
+        num_samples_after = dataset.num_rows
 
         # Check number of samples.
         assert len(os.listdir(os.path.join(transcript_dir, channel_name))) == dataset.num_rows, \
             f"{channel_name} - Number of transcripts does not match that in dataset."
+        print(f"Number of samples lost: {num_samples_before - num_samples_after}")
 
         # Save dataset.
         print("Saving dataset...")

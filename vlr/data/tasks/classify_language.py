@@ -89,10 +89,10 @@ def main(args: argparse.Namespace):
         dataset = load_dataset(
             "json", data_files=prev_stage_path, split="train",
         )
+        num_samples_before = dataset.num_rows
 
         # Classify language.
         print("Classifying language...")
-        print(f"Number of samples before: {dataset.num_rows}")
         dataset = dataset.map(
             language_classifier.process_batch,
             batched=True,
@@ -105,7 +105,9 @@ def main(args: argparse.Namespace):
             lambda sample: sample["id"] is not None,
             num_proc=args.num_proc if 0 < args.num_proc <= os.cpu_count() else os.cpu_count(),
         )
-        print(f"Number of samples after: {dataset.num_rows}")
+        num_samples_after = dataset.num_rows
+
+        print(f"Number of samples lost: {num_samples_before - num_samples_after}")
 
         # Save dataset.
         print("Saving dataset...")
