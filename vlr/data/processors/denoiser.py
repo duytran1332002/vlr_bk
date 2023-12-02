@@ -63,7 +63,7 @@ class Denoiser(Processor):
             sf.write(
                 denoised_path,
                 np.ravel(denoised_audio_array),
-                self.model.sample_rate,
+                self.sampling_rate,
             )
 
         sample["sampling_rate"] = self.sampling_rate
@@ -106,7 +106,7 @@ class Denoiser(Processor):
                 sf.write(
                     denoised_path,
                     np.ravel(denoised_audio_array),
-                    self.model.sample_rate,
+                    self.sampling_rate,
                 )
 
         batch["sampling_rate"] = [self.sampling_rate] * len(batch["id"])
