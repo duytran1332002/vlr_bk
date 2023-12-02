@@ -74,7 +74,7 @@ def main(args: argparse.Namespace) -> None:
     cropper = Cropper(
         visual_dir=visual_dir,
         mouth_dir=mouth_dir,
-        min_detection_confidence=0.99,
+        padding=10,
         overwrite=args.overwrite,
     )
 
