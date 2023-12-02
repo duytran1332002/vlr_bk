@@ -1,6 +1,7 @@
 import os
 import torch
 import torchaudio
+from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
 from transformers import Wav2Vec2ProcessorWithLM
@@ -52,6 +53,8 @@ class Transcriber(Processor):
         self.transcript_dir = transcript_dir
         self.overwrite = overwrite
 
+        self.tokenizer = PyTokenizer(load_nontone_data=True)
+
     def process_sample(self, sample: dict) -> dict:
         """
         Transcribe for a sample.
@@ -73,12 +76,25 @@ class Transcriber(Processor):
                 sampling_rate=sampling_rate,
             )
 
-            if len(transcript) > 0:
+            if self.check_output(transcript=transcript):
                 with open(transcript_path, "w") as f:
                     print(transcript.strip(), file=f)
             else:
                 sample["id"] = None
         return sample
+
+    def check_output(self, transcript: str) -> str:
+        """
+        Check output.
+        :param transcript:      Transcript.
+        :return:                Whether output is valid.
+        """
+        if len(transcript) == 0:
+            return False
+        for token in self.tokenizer.word_tokenize(transcript, tokenize_option=0):
+            if len(self.tokenizer.word_tokenize(token, tokenize_option=2)) > 1:
+                return False
+        return True
 
     def transcribe(
         self, audio_array: torch.Tensor,
