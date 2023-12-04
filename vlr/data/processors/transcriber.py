@@ -77,7 +77,7 @@ class Transcriber(Processor):
             )
 
             if self.check_output(transcript=transcript):
-                with open(transcript_path, "w") as f:
+                with open(transcript_path, "w", encoding="utf-8") as f:
                     print(transcript.strip(), file=f)
             else:
                 sample["id"] = None
