@@ -82,17 +82,13 @@ def main(args: argparse.Namespace):
         print(f"Directory {args.active_speaker_dir} does not exist.")
         return
 
-    if not os.path.exists(args.data_dir):
-        os.makedirs(args.data_dir)
+    os.makedirs(args.data_dir, exist_ok=True)
     visual_dir = os.path.join(args.data_dir, "visual")
-    if not os.path.exists(visual_dir):
-        os.makedirs(visual_dir)
+    os.makedirs(visual_dir, exist_ok=True)
     audio_dir = os.path.join(args.data_dir, "audio")
-    if not os.path.exists(audio_dir):
-        os.makedirs(audio_dir)
+    os.makedirs(audio_dir, exist_ok=True)
     cur_stage_dir = os.path.join(args.data_dir, "stage_1")
-    if not os.path.exists(cur_stage_dir):
-        os.makedirs(cur_stage_dir)
+    os.makedirs(cur_stage_dir, exist_ok=True)
 
     if args.channel_names_path:
         with open(args.channel_names_path, "r") as f:

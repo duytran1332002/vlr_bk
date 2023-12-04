@@ -58,8 +58,7 @@ def main(args: argparse.Namespace):
         return
 
     cur_stage_dir = os.path.join(args.data_dir, "stage_3")
-    if not os.path.exists(cur_stage_dir):
-        os.makedirs(cur_stage_dir)
+    os.makedirs(cur_stage_dir, exist_ok=True)
 
     if args.channel_names_path:
         with open(args.channel_names_path, "r") as f:

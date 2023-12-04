@@ -59,11 +59,9 @@ def main(args: argparse.Namespace):
         return
 
     denoised_dir = os.path.join(args.data_dir, "denoised")
-    if not os.path.exists(denoised_dir):
-        os.makedirs(denoised_dir)
+    os.makedirs(denoised_dir, exist_ok=True)
     cur_stage_dir = os.path.join(args.data_dir, "stage_2")
-    if not os.path.exists(cur_stage_dir):
-        os.makedirs(cur_stage_dir)
+    os.makedirs(cur_stage_dir, exist_ok=True)
 
     if args.channel_names_path:
         with open(args.channel_names_path, "r") as f:

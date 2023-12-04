@@ -40,8 +40,7 @@ def main(args: argparse.Namespace) -> None:
         raise ValueError(f"Directory {transcript_dir} does not exist.")
 
     statistics_dir = os.path.join(args.data_dir, "statistics")
-    if not os.path.exists(statistics_dir):
-        os.makedirs(statistics_dir)
+    os.makedirs(statistics_dir, exist_ok=True)
 
     if args.channel_names_path:
         with open(args.channel_names_path, "r") as f:
