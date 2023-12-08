@@ -66,15 +66,15 @@ class AVDataset(torch.utils.data.Dataset):
         # 'audio': {'path': 'audio_path', 'sampling_rate': 16000}, \
         # 'duration': 3, 'transcript': 'transcript_path'}
         item = self.dataset[int(idx)]
-        channel = item["visual"]["path"].split("/")[-2]
-
+        channel = item["channel"]
+            
         # load text and transform it into token ids
         transcript_path =  os.path.join(self.root_dir, "transcripts" + "/" + channel + "/" + item["id"] + ".txt")
         text = open(transcript_path , encoding="utf8").read().strip()
         token_id = self.text_transform.tokenize(text)
 
-        video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + "-mouth" + ".mp4")
-        audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + "-denoised" + ".wav")
+        video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + ".mp4")
+        audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + ".wav")
 
         if self.modality == "video":
             video = load_video(video_path)
@@ -119,20 +119,18 @@ class AVDatasetIterable(torch.utils.data.IterableDataset):
 
     def __iter__(self):
         # item format:
-        # {'id': '', 'visual': {'fps': 25, 'path': 'video_path'}, \
-        # 'audio': {'path': 'audio_path', 'sampling_rate': 16000}, \
-        # 'duration': 3, 'transcript': 'transcript_path'}
+        # {'channel': 'mcnguyenkhang_output', 'sampling_rate': 16000, 'id': '720183465804312089700020-0-3', 'duration': 3, 'fps': 25}
         for idx in range(len(self.dataset)):
             item = self.dataset[int(idx)]
-            channel = item["visual"]["path"].split("/")[-2]
+            channel = item["channel"]
             
             # load text and transform it into token ids
             transcript_path =  os.path.join(self.root_dir, "transcripts" + "/" + channel + "/" + item["id"] + ".txt")
             text = open(transcript_path , encoding="utf8").read().strip()
             token_id = self.text_transform.tokenize(text)
 
-            video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + "-mouth" + ".mp4")
-            audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + "-denoised" + ".wav")
+            video_path = os.path.join(self.root_dir, "mouths" + "/" + channel + "/" + item["id"] + ".mp4")
+            audio_path = os.path.join(self.root_dir, "denoised" + "/" + channel + "/" + item["id"] + ".wav")
 
             if self.modality == "video":
                 video = load_video(video_path)

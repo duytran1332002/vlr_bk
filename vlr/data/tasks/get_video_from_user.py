@@ -65,9 +65,12 @@ def get_user_video(user_id, save_path, time_sleep=10):
     urlsToDownload = driver.execute_script(script)
     driver.close()
     # save the urls to a file
-    with open(os.path.join(save_path, f"{user_id}.txt"), "w") as f:
-        for url in urlsToDownload:
-            f.write(f"{url}\n")
+    if len(urlsToDownload) > 0:
+        with open(os.path.join(save_path, f"{user_id}.txt"), "w") as f:
+            for url in urlsToDownload:
+                f.write(f"{url}\n")
+    else:
+        print(f"{user_id} has no videos")
     
 
 if __name__ == "__main__":
