@@ -5,12 +5,8 @@ sys.path.append(os.getcwd())
 
 import argparse
 from tqdm import tqdm
-from datasets import disable_caching
 from vlr.data.processors import Executor
 from vlr.data.utils import prepare_dir
-
-
-disable_caching()
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,6 +57,12 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Upload to hub after processing.",
     )
+    parser.add_argument(
+        "--clean-up",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Upload to hub after processing.",
+    )
     return parser.parse_args()
 
 
@@ -99,7 +101,7 @@ def main(args: argparse.Namespace):
         )
 
         # Get dataset.
-        print("Getting dataset...")
+        print("Loading dataset...")
         executor = executor.load_dataset(channel)
 
         # Extract audio and visual.
@@ -128,8 +130,6 @@ def main(args: argparse.Namespace):
         print("Saving metada...")
         executor.save_metadata(channel)
 
-        executor.dataset.cleanup_cache_files()
-
         # Upload to hub.
         if args.upload_to_hub:
             print("Uploading to hub...")
@@ -137,13 +137,19 @@ def main(args: argparse.Namespace):
             executor.zip_and_upload_dir(
                 dir_path=channel_visual_dir,
                 path_in_repo=os.path.join("visual", channel + ".zip"),
+                overwrite=args.overwrite,
             )
             executor.zip_and_upload_dir(
                 dir_path=channel_audio_dir,
                 path_in_repo=os.path.join("audio", channel + ".zip"),
+                overwrite=args.overwrite,
             )
 
         print("-" * (13 + len(channel) + 2 * 20))
+
+    if args.clean_up:
+        print("Cleaning up...")
+        executor.clean_cache()
 
 
 if __name__ == "__main__":

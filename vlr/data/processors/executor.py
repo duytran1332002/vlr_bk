@@ -1,4 +1,5 @@
 import os
+import shutil
 from typing import Union
 from datasets import Dataset, load_dataset, get_dataset_config_names
 from .processor import Processor
@@ -52,6 +53,7 @@ class Executor(Processor):
             channel_names_to_process_path=channel_names_to_process_path,
         )
         self.dataset: Dataset = None
+        self.cache_dir = os.path.join(os.getcwd(), ".cache")
 
     def _load_channels(self, channel_names_to_process_path: str = None) -> Processor:
         """
@@ -85,6 +87,7 @@ class Executor(Processor):
         self.dataset = load_dataset(
             self.src_repo_id, channel,
             split="train",
+            cache_dir=self.cache_dir,
         )
         self.num_samples_before = self.dataset.num_rows
         self.num_samples_after = 0
@@ -205,4 +208,12 @@ class Executor(Processor):
             dir_path=dir_path,
             repo_id=self.dest_repo_id,
             path_in_repo=path_in_repo,
+            overwrite=overwrite,
         )
+
+    def clean_cache(self) -> None:
+        """
+        Clean cache.
+        """
+        if os.path.exists(self.cache_dir):
+            shutil.rmtree(self.cache_dir)
