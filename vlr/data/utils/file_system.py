@@ -31,7 +31,7 @@ def zip_dir(zip_dir: str, overwrite: bool = False) -> str:
     return zip_dir + ".zip"
 
 
-def check_num_samples_in_dir(dir: str, num_samples: int):
+def check_num_samples_in_dir(dir_path: str, num_samples: int):
     """
     Check if number of samples in directory matches expected number of samples.
     :param dir:             Path to directory.
@@ -39,9 +39,9 @@ def check_num_samples_in_dir(dir: str, num_samples: int):
     :raises:                AssertionError if number of samples in directory does not
                             match expected number of samples.
     """
-    num_samples_in_dir = len(os.listdir(dir))
+    num_samples_in_dir = len(os.listdir(dir_path))
     assert num_samples_in_dir == num_samples, \
-        f"Expected {num_samples} in {dir}, but got {num_samples_in_dir}"
+        f"Expected {num_samples} in {dir_path}, but got {num_samples_in_dir}"
 
 
 def get_file_ids_in_dir(dir: str) -> list[str]:
