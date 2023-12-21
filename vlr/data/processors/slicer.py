@@ -1,6 +1,6 @@
 import os
 import moviepy.editor as mp
-from vlr.data.processors.base import Processor
+from .processor import Processor
 
 
 class Slicer(Processor):

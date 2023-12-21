@@ -5,7 +5,7 @@ from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
 from transformers import Wav2Vec2ProcessorWithLM
-from vlr.data.processors.base import Processor
+from vlr.data.processors.processor import Processor
 
 
 class Transcriber(Processor):

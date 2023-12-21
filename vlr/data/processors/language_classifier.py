@@ -2,7 +2,7 @@ import os
 import torch
 import torchaudio
 from speechbrain.pretrained import EncoderClassifier
-from vlr.data.processors.base import Processor
+from vlr.data.processors.processor import Processor
 
 
 class LanguageClassifier(Processor):

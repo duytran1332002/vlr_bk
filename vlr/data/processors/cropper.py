@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 import mediapipe as mp
-from vlr.data.processors.base import Processor
+from vlr.data.processors.processor import Processor
 
 
 class Cropper(Processor):

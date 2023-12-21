@@ -5,7 +5,7 @@ import numpy as np
 import soundfile as sf
 from denoiser import pretrained
 from denoiser.dsp import convert_audio
-from vlr.data.processors.base import Processor
+from vlr.data.processors.processor import Processor
 
 
 class Denoiser(Processor):

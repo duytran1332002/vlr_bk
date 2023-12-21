@@ -30,7 +30,7 @@ from vlr.data.utils.TalkNet.talkNet import talkNet
 from vlr.data.utils.TalkNet.model.faceDetector.s3fd import S3FD
 
 
-from vlr.data.processors.base import Processor
+from vlr.data.processors.processor import Processor
 
 class ActiveSpeakerExtracting(Processor):
     def __init__(self,
