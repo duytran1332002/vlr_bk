@@ -12,6 +12,9 @@ from vlr.data.utils import prepare_dir, check_num_samples_in_dir
 
 
 class Executor(Processor):
+    """
+    This processor is used to execute other processors.
+    """
     PROCESSORS = {
         "slicer": Slicer,
         "denoiser": Denoiser,
@@ -28,6 +31,15 @@ class Executor(Processor):
         processor_kwargs: dict = {},
         channel_names_to_process_path: str = None,
     ) -> None:
+        """
+        :param processor_name:                  Name of processor.
+        :param src_repo_id:                     Source repository id.
+        :param dest_repo_id:                    Destination repository id.
+        :param output_dir:                      Output directory.
+        :param processor_kwargs:                Keyword arguments for processor.
+        :param channel_names_to_process_path:   Path to file containing channel names
+                                                to process.
+        """
         self.processor: Processor = self.PROCESSORS[processor_name](**processor_kwargs)
         self.uploader = Uploader()
         self.src_repo_id = src_repo_id
@@ -36,12 +48,18 @@ class Executor(Processor):
         self.metadata_dir = prepare_dir(os.path.join(output_dir, "metadata"))
         self.channel_names_path = os.path.join(output_dir, "channel_names.txt")
 
-        self.available_channels, self._existing_channels = self.load_channels(
+        self.available_channels, self._existing_channels = self._load_channels(
             channel_names_to_process_path=channel_names_to_process_path,
         )
         self.dataset: Dataset = None
 
     def _load_channels(self, channel_names_to_process_path: str = None) -> Processor:
+        """
+        Load channels to process.
+        :param channel_names_to_process_path:   Path to file containing channel names
+                                                to process.
+        :return:                                Executor.
+        """
         # Get available channel names.
         available_channels = set(get_dataset_config_names(self.src_repo_id))
 
@@ -59,6 +77,11 @@ class Executor(Processor):
         return list(available_channels), list(existing_channels)
 
     def load_dataset(self, channel: str) -> Processor:
+        """
+        Load dataset.
+        :param channel:     Channel name.
+        :return:            Executor.
+        """
         self.dataset = load_dataset(
             self.src_repo_id, channel,
             split="train",
@@ -72,6 +95,13 @@ class Executor(Processor):
         num_proc: int = None,
         remove_columns: Union[str, list[str]] = None,
     ) -> Processor:
+        """
+        Process sample.
+        :param fn_kwargs:           Keyword arguments for function.
+        :param num_proc:            Number of processes.
+        :param remove_columns:      Columns to remove.
+        :return:                    Executor.
+        """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         self.dataset = self.dataset.map(
@@ -93,6 +123,13 @@ class Executor(Processor):
         num_proc: int = None,
         remove_columns: Union[str, list[str]] = None,
     ) -> Processor:
+        """
+        Process batch.
+        :param fn_kwargs:           Keyword arguments for function.
+        :param batch_size:          Batch size.
+        :param num_proc:            Number of processes.
+        :param remove_columns:      Columns to remove.
+        """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         self.dataset = self.dataset.map(
@@ -110,6 +147,10 @@ class Executor(Processor):
         return self
 
     def check_num_samples_in_dir(self, dir_path: str) -> None:
+        """
+        Check if number of samples in directory matches expected number of samples.
+        :param dir_path:    Path to directory.
+        """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         check_num_samples_in_dir(
@@ -118,9 +159,16 @@ class Executor(Processor):
         )
 
     def get_num_samples_lost(self) -> int:
+        """
+        Get number of samples lost.
+        """
         return self.num_samples_before - self.num_samples_after
 
     def save_metadata(self, channel: str) -> None:
+        """
+        Save metadata as parquet file and save channel name to file.
+        :param channel:     Channel name.
+        """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
@@ -130,7 +178,11 @@ class Executor(Processor):
         with open(self.channel_names_path, "w") as f:
             f.write("\n".join(self._existing_channels))
 
-    def upload_metadata_to_hub(self, channel: str):
+    def upload_metadata_to_hub(self, channel: str) -> None:
+        """
+        Upload metadata and channel names to hub.
+        :param channel:     Channel name.
+        """
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
         self.uploader.upload_file(
             file_path=metadata_path,
@@ -144,6 +196,11 @@ class Executor(Processor):
         )
 
     def zip_and_upload_dir(self, dir_path: str, path_in_repo: str) -> None:
+        """
+        Zip directory and upload it to the hub.
+        :param dir_path:        Path to directory.
+        :param path_in_repo:    Path to directory in repository.
+        """
         self.uploader.zip_and_upload_dir(
             dir_path=dir_path,
             repo_id=self.dest_repo_id,

@@ -32,7 +32,7 @@ class Slicer(Processor):
                 duration = video.duration
 
                 if duration < clip_duration:
-                    raise Exception("Video is too short")
+                    continue
 
                 video = video.set_fps(fps)
                 sampling_rate = int(video.audio.fps)
