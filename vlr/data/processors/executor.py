@@ -63,10 +63,10 @@ class Executor(Processor):
         :return:                                Executor.
         """
         # Get available channel names.
-        available_channels = set(get_dataset_config_names(self.src_repo_id))
+        available_channels = set(get_dataset_config_names(self.src_repo_id)) - {"all"}
 
         # Get existing channel names.
-        existing_channels = set(get_dataset_config_names(self.dest_repo_id))
+        existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
 
         # Get channel names to process.
         new_channels = set()
@@ -165,7 +165,7 @@ class Executor(Processor):
         """
         Get number of samples lost.
         """
-        return self.num_samples_before - self.num_samples_after
+        return self.num_samples_after - self.num_samples_before
 
     def save_metadata(self, channel: str) -> None:
         """
