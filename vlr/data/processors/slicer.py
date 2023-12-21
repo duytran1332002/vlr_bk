@@ -4,115 +4,106 @@ from .processor import Processor
 
 
 class Slicer(Processor):
-    def __init__(
-        self, visual_dir: str,
-        audio_dir: str,
+    def process_batch(
+        self, batch: dict,
+        visual_output_dir: str,
+        audio_output_dir: str,
         fps: int = 25,
-        duration_threshold: float = 1.0,
-        segment_duration: float = 5.0,
-        segment_overlap: float = 1.0,
-        keep_last_segment: bool = True,
-        overwrite: bool = False,
-    ) -> None:
-        """
-        :param visual_dir:          Path to directory with muted video files.
-        :param audio_dir:           Path to directory with sound files.
-        :param fps:                 Frame rate.
-        :param duration_threshold:  Minimum duration of video segment.
-        :param segment_duration:    Duration of video segment.
-        :param segment_overlap:     Overlap between video segments.
-        :param keep_last_segment:   Keep last video segment.
-        :param overwrite:           Overwrite existing files.
-        """
-        self.visual_dir = visual_dir
-        self.audio_dir = audio_dir
-        self.fps = fps
-        self.duration_threshold = duration_threshold
-        self.segment_duration = segment_duration
-        self.segment_overlap = segment_overlap
-        self.keep_last_segment = keep_last_segment
-        self.overwrite = overwrite
-
-    def process_batch(self, batch: dict) -> dict:
+        clip_duration: float = 3.0,
+        clip_overlap: float = 1.0,
+        keep_last: bool = True,
+    ) -> dict:
         """
         Split video into audio and visual.
         :param batch:           Batch with path to video file.
         :return:                Samples with paths to audio and visual.
         """
-        ids = []
-        durations = []
-        channel_names = []
-        for raw_video_path, channel_name in zip(batch["file"], batch["channel"]):
-            file_id = os.path.basename(raw_video_path).split('.')[0]
+        new_batch = {
+            "id": [],
+            "channel": [],
+            "duration": [],
+            "fps": [],
+            "sampling_rate": [],
+        }
 
-            try:
-                video = mp.VideoFileClip(raw_video_path)
+        for id, video_path in zip(batch["id"], batch["video"]):
+            segment_ids = []
+            with mp.VideoFileClip(video_path) as video:
                 duration = video.duration
 
-                if duration < self.duration_threshold:
-                    video.close()
+                if duration < clip_duration:
                     raise Exception("Video is too short")
 
-                video = video.set_fps(self.fps)
-
-                segment_id = f"{file_id}" + "-{start}-{end}"
-                visual_path = os.path.join(
-                    self.visual_dir, channel_name, segment_id + ".mp4"
-                )
-                audio_path = os.path.join(
-                    self.audio_dir, channel_name, segment_id + ".wav"
-                )
+                video = video.set_fps(fps)
+                sampling_rate = int(video.audio.fps)
 
                 # Split video into segments.
                 start = 0
-                end = self.segment_duration
+                end = clip_duration
                 while end <= duration:
-                    segment_visual_path = visual_path.format(start=int(start), end=int(end))
-                    segment_audio_path = audio_path.format(start=int(start), end=int(end))
-
-                    self.separate(
-                        segment=video.subclip(start, end),
-                        visual_path=segment_visual_path,
-                        audio_path=segment_audio_path,
+                    segment_id = self.save_visual_and_audio_clip(
+                        id=id,
+                        video=video,
+                        start=start,
+                        end=end,
+                        visual_dir=visual_output_dir,
+                        audio_dir=audio_output_dir,
                     )
+                    segment_ids.append(segment_id)
 
-                    ids.append(segment_id.format(start=int(start), end=int(end)))
-                    channel_names.append(channel_name)
-                    durations.append(int(end - start))
+                    start += clip_duration - clip_overlap
+                    end = start + clip_duration
 
-                    start += self.segment_duration - self.segment_overlap
-                    end = start + self.segment_duration
-
-                if self.keep_last_segment and int(duration - end) >= self.segment_overlap:
-                    end = duration
-                    start = end - self.segment_duration
-                    segment_visual_path = visual_path.format(start=int(start), end=int(end))
-                    segment_audio_path = audio_path.format(start=int(start), end=int(end))
-
-                    self.separate(
-                        segment=video.subclip(start, end),
-                        visual_path=segment_visual_path,
-                        audio_path=segment_audio_path,
+                if keep_last and int(duration - start) >= 0.5 * clip_duration:
+                    segment_id = self.save_visual_and_audio_clip(
+                        id=id,
+                        video=video,
+                        start=duration - clip_duration,
+                        end=duration,
+                        visual_dir=visual_output_dir,
+                        audio_dir=audio_output_dir,
                     )
+                    segment_ids.append(segment_id)
 
-                    ids.append(segment_id.format(start=int(start), end=int(end)))
-                    channel_names.append(channel_name)
-                    durations.append(int(end - start))
+                new_batch["id"].extend(segment_ids)
+                new_batch["channel"].extend([batch["channel"]] * len(segment_ids))
+                new_batch["duration"].extend([clip_duration] * len(segment_ids))
+                new_batch["fps"].extend([fps] * len(segment_ids))
+                new_batch["sampling_rate"].extend([sampling_rate] * len(segment_ids))
+        return new_batch
 
-                video.close()
-            except Exception:
-                pass
+    def save_visual_and_audio_clip(
+        self, id: str,
+        video: mp.VideoFileClip,
+        start: float,
+        end: float,
+        visual_dir: str,
+        audio_dir: str,
+    ) -> str:
+        """
+        Separate video into audio and visual.
+        :param segment:         Video segment.
+        :param visual_path:     Path to visual file.
+        :param audio_path:      Path to audio file.
+        """
+        segment_id = f"{id}-{int(start)}-{int(end)}"
+        segment = video.subclip(start, end)
+        self.save_visual_clip(
+            segment=segment,
+            segment_id=segment_id,
+            visual_dir=visual_dir,
+        )
+        self.save_audio_clip(
+            segment=segment,
+            segment_id=segment_id,
+            audio_dir=audio_dir,
+        )
+        return segment_id
 
-        batch["id"] = ids
-        batch["channel"] = channel_names
-        batch["fps"] = [self.fps] * len(ids)
-        batch["duration"] = durations
-        return batch
-
-    def separate(
+    def save_visual_clip(
         self, segment: mp.VideoFileClip,
-        visual_path: str,
-        audio_path: str,
+        segment_id: str,
+        visual_dir: str,
     ) -> None:
         """
         Separate video into audio and visual.
@@ -120,13 +111,27 @@ class Slicer(Processor):
         :param visual_path:     Path to visual file.
         :param audio_path:      Path to audio file.
         """
-        if self.overwrite or not os.path.exists(visual_path):
+        visual_path = os.path.join(visual_dir, f"{segment_id}.mp4")
+        if not os.path.exists(visual_path):
             segment.without_audio().write_videofile(
                 visual_path,
                 codec="libx264",
                 logger=None,
             )
-        if self.overwrite or not os.path.exists(audio_path):
+
+    def save_audio_clip(
+        self, segment: mp.VideoFileClip,
+        segment_id: str,
+        audio_dir: str,
+    ) -> None:
+        """
+        Separate video into audio and visual.
+        :param segment:         Video segment.
+        :param visual_path:     Path to visual file.
+        :param audio_path:      Path to audio file.
+        """
+        audio_path = os.path.join(audio_dir, f"{segment_id}.wav")
+        if not os.path.exists(audio_path):
             segment.audio.write_audiofile(
                 audio_path,
                 codec="pcm_s16le",
