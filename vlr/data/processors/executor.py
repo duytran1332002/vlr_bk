@@ -181,7 +181,10 @@ class Executor(Processor):
         with open(self.channel_names_path, "w") as f:
             f.write("\n".join(self._existing_channels))
 
-    def upload_metadata_to_hub(self, channel: str) -> None:
+    def upload_metadata_to_hub(
+        self, channel: str,
+        overwrite: bool = True,
+    ) -> None:
         """
         Upload metadata and channel names to hub.
         :param channel:     Channel name.
@@ -191,14 +194,20 @@ class Executor(Processor):
             file_path=metadata_path,
             repo_id=self.dest_repo_id,
             path_in_repo=os.path.join("metadata", channel + ".parquet"),
+            overwrite=overwrite,
         )
         self.uploader.upload_file(
             file_path=self.channel_names_path,
             repo_id=self.dest_repo_id,
-            path_in_repo=os.path.join("vietnamese-speaker-clip", "channels.txt"),
+            path_in_repo="channels.txt",
+            overwrite=overwrite,
         )
 
-    def zip_and_upload_dir(self, dir_path: str, path_in_repo: str) -> None:
+    def zip_and_upload_dir(
+        self, dir_path: str,
+        path_in_repo: str,
+        overwrite: bool = True,
+    ) -> None:
         """
         Zip directory and upload it to the hub.
         :param dir_path:        Path to directory.
