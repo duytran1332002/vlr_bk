@@ -9,50 +9,35 @@ class Cropper(Processor):
     """
     This class is used to crop mouth region.
     """
-    def __init__(
-        self, visual_dir: str,
-        mouth_dir: str,
-        padding: int = 10,
-        overwrite: bool = False,
-    ) -> None:
-        """
-        :param visual_dir:                  Path to directory with video files.
-        :param mouth_dir:                   Path to directory with mouth region.
-        :param padding:                     Padding.
-        :param overwrite:                   Overwrite existing files.
-        """
-        self.visual_dir = visual_dir
-        self.mouth_dir = mouth_dir
+    def __init__(self) -> None:
         self.landmark_detector = mp.solutions.face_mesh.FaceMesh()
-        self.padding = padding
         self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        self.overwrite = overwrite
 
         self.mouth_landmark_idxes = [
             61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
             291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
         ]
 
-    def process_sample(self, sample: dict) -> dict:
+    def process_sample(
+        self, sample: dict,
+        visual_output_dir: str,
+        padding: int = 20,
+    ) -> dict:
         """
         Crop mouth region in video.
-        :param batch:           Sample.
-        :return:                Sample with path to video of cropped mouth region.
+        :param batch:               Sample.
+        :param visual_output_dir:   Path to directory containing cropped mouth region.
+        :param padding:             Padding.
+        :return:                    Sample with path to video of cropped mouth region.
         """
-        visual_path = os.path.join(
-            self.visual_dir, sample["channel"], sample["id"] + ".mp4"
-        )
-        mouth_path = os.path.join(
-            self.mouth_dir, sample["channel"], sample["id"] + ".mp4"
-        )
+        visual_output_path = os.path.join(visual_output_dir, sample["id"] + ".mp4")
 
-        if self.overwrite or not os.path.exists(mouth_path):
-            cap = cv2.VideoCapture(visual_path)
-
+        if not os.path.exists(visual_output_path):
+            cap = cv2.VideoCapture(sample["visual"])
             mouths = []
             max_width, max_height = 0, 0
             for frame in self.get_frames(cap):
-                mouth = self.crop_mouth(frame, self.padding)
+                mouth = self.crop_mouth(frame, padding)
                 if mouth is None or mouth.shape[0] == 0 or mouth.shape[1] == 0:
                     continue
                 max_width = max(max_width, mouth.shape[1])
@@ -65,7 +50,7 @@ class Cropper(Processor):
                 sample_duration=sample["duration"],
             ):
                 self.write_video(
-                    video_path=mouth_path,
+                    video_path=visual_output_path,
                     frames=mouths,
                     frame_width=max_width,
                     frame_height=max_height,
