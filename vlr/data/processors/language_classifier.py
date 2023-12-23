@@ -9,83 +9,42 @@ class LanguageClassifier(Processor):
     """
     This class is used to filter out samples with Vietnamese language.
     """
-    def __init__(
-        self, audio_dir: str,
-    ) -> None:
+    def __init__(self) -> None:
         """
-        :param audio_dir:       Path to directory containing sound files.
         """
         self.model = EncoderClassifier.from_hparams(
             source="speechbrain/lang-id-voxlingua107-ecapa",
             savedir="tmp"
         )
-        self.audio_dir = audio_dir
+        self.sampling_rate = 16000
 
-    def process_sample(self, sample: dict) -> dict:
+    def classify(self, audio_array: torch.Tensor, sampling_rate: int) -> tuple[int, float]:
         """
-        Filter out samples with Vietnamese language.
-        :param sample:          Sample.
-        :return:                Sample updated with path to denoised audio array.
+        Classify language of audio array.
+        :param audio_array:     Audio array.
+        :return:                Language index and score.
         """
-        audio_path = os.path.join(
-            self.audio_dir, sample["channel"], sample["id"] + ".wav"
-        )
-
-        audio_array, sampling_rate = torchaudio.load(audio_path)
-        if sampling_rate != 16000:
+        if sampling_rate != self.sampling_rate:
             audio_array = torchaudio.transforms.Resample(
                 orig_freq=sampling_rate,
-                new_freq=16000,
+                new_freq=self.sampling_rate,
             )
-            sample["sampling_rate"] = 16000
-
         _, score, lang_idx, _ = self.model.classify_batch(audio_array.cuda())
         score = score.exp().item()
         lang_idx = lang_idx.item()
-        if lang_idx != 102 or score < 0.99:
-            sample["id"] = None
-        return sample
+        return lang_idx, score
 
-    def process_batch(self, batch: dict) -> dict:
+    def is_vietnamese(
+        self, audio_array: torch.Tensor,
+        sampling_rate: int,
+        threshold: float = 0.99,
+    ) -> bool:
         """
-        Filter out samples with Vietnamese language.
-        :param batch:           Batch of samples.
-        :return:                Samples updated with path to denoised audio array.
+        Check if language is Vietnamese.
+        :param lang_idx:        Language index.
+        :param score:           Score.
+        :param threshold:       Threshold.
+        :return:                Whether language is Vietnamese.
         """
-        audio_arrays = []
-        max_length = 0
-        for i in range(len(batch["id"])):
-            audio_path = os.path.join(
-                self.audio_dir, batch["channel"][i], batch["id"][i] + ".wav"
-            )
-            audio_array, sampling_rate = torchaudio.load(audio_path)
-            if sampling_rate != 16000:
-                audio_array = torchaudio.transforms.Resample(
-                    orig_freq=sampling_rate,
-                    new_freq=16000,
-                )
-                batch["sampling_rate"][i] = 16000
-            audio_arrays.append(audio_array)
-            max_length = max(max_length, len(audio_array))
-
-        # Pad audio arrays.
-        for i in range(len(batch["id"])):
-            audio_arrays[i] = torch.nn.functional.pad(
-                audio_arrays[i],
-                (0, max_length - len(audio_arrays[i])),
-                "constant",
-                0,
-            )
-
-        # Stack audio arrays.
-        audio_arrays = torch.stack(audio_arrays).cuda()
-
-        # Classify audio arrays.
-        _, scores, lang_idxes, _ = self.model.classify_batch(audio_array)
-        scores = scores.exp().cpu().tolist()
-        lang_idxes = lang_idxes.cpu().tolist()
-
-        for i, (score, lang_idx) in enumerate(zip(scores, lang_idxes)):
-            if lang_idx != 102 or score < 0.99:
-                batch["id"][i] = None
-        return batch
+        lang_idx, score = self.classify(audio_array, sampling_rate)
+        return lang_idx == 102 and score >= threshold

@@ -5,7 +5,8 @@ from CocCocTokenizer import PyTokenizer
 from huggingface_hub import hf_hub_download
 from importlib.machinery import SourceFileLoader
 from transformers import Wav2Vec2ProcessorWithLM
-from vlr.data.processors.processor import Processor
+from .processor import Processor
+from .language_classifier import LanguageClassifier
 
 
 class Transcriber(Processor):
@@ -13,12 +14,7 @@ class Transcriber(Processor):
     This class is used to transcribe audio into text.
     """
     def __init__(
-        self,
-        repo_id: str,
-        denoised_dir: str,
-        transcript_dir: str,
-        device: str = "cuda",
-        overwrite: bool = False,
+        self, repo_id: str,
     ) -> None:
         """
         :param model_path:          Path to model.
@@ -43,43 +39,49 @@ class Transcriber(Processor):
         self.processor = Wav2Vec2ProcessorWithLM.from_pretrained(repo_id)
 
         # Prepare device.
-        if device == "cuda" and not torch.cuda.is_available():
-            print("CUDA is not available. Using CPU instead.")
-            device = "cpu"
-        self.device = device
-        self.model = self.model.to(device)
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = self.model.to(self.device)
 
-        self.denoised_dir = denoised_dir
-        self.transcript_dir = transcript_dir
-        self.overwrite = overwrite
-
+        # Prepare tokenizer.
         self.tokenizer = PyTokenizer(load_nontone_data=True)
 
-    def process_sample(self, sample: dict) -> dict:
+        # Prepare language classifier.
+        self.language_classifier = LanguageClassifier()
+
+    def process_sample(
+        self, sample: dict,
+        transcript_output_dir: str,
+        language_threshold: float = 0.99,
+        beam_width: int = 500,
+    ) -> dict:
         """
         Transcribe for a sample.
         :param sample:          Audio sample.
         :return:                Sample with path to transcript.
         """
-        denoised_path = os.path.join(
-            self.denoised_dir, sample["channel"], sample["id"] + ".wav"
-        )
-        transcript_path = os.path.join(
-            self.transcript_dir, sample["channel"], sample["id"] + ".txt"
-        )
+        transcript_output_path = os.path.join(transcript_output_dir, sample["id"] + ".txt")
+        if not os.path.exists(transcript_output_path):
+            try:
+                audio_array, sampling_rate = torchaudio.load(sample["audio"])
+                if self.language_classifier.is_vietnamese(
+                    audio_array=audio_array,
+                    sampling_rate=sampling_rate,
+                    threshold=language_threshold,
+                ):
+                    raise Exception("Language is not Vietnamese.")
 
-        if self.overwrite or not os.path.exists(transcript_path):
-            audio_array, sampling_rate = torchaudio.load(denoised_path)
+                transcript = self.transcribe(
+                    audio_array=audio_array,
+                    sampling_rate=sampling_rate,
+                    beam_width=beam_width,
+                )
 
-            transcript = self.transcribe(
-                audio_array=audio_array,
-                sampling_rate=sampling_rate,
-            )
+                if not self.check_output(transcript=transcript):
+                    raise Exception("Transcript is invalid.")
 
-            if self.check_output(transcript=transcript):
-                with open(transcript_path, "w", encoding="utf-8") as f:
+                with open(transcript_output_path, "w", encoding="utf-8") as f:
                     print(transcript.strip(), file=f)
-            else:
+            except Exception:
                 sample["id"] = None
         return sample
 
