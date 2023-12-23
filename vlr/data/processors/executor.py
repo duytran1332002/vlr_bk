@@ -2,6 +2,7 @@ import os
 import shutil
 from typing import Union
 from datasets import Dataset, load_dataset, get_dataset_config_names
+from datasets import enable_progress_bar, disable_progress_bar
 from .processor import Processor
 from .slicer import Slicer
 from .denoiser import Denoiser
@@ -30,7 +31,6 @@ class Executor(Processor):
         dest_repo_id: str,
         output_dir: str,
         processor_kwargs: dict = {},
-        channel_names_to_process_path: str = None,
     ) -> None:
         """
         :param processor_name:                  Name of processor.
@@ -38,8 +38,6 @@ class Executor(Processor):
         :param dest_repo_id:                    Destination repository id.
         :param output_dir:                      Output directory.
         :param processor_kwargs:                Keyword arguments for processor.
-        :param channel_names_to_process_path:   Path to file containing channel names
-                                                to process.
         """
         self.processor: Processor = self.PROCESSORS[processor_name](**processor_kwargs)
         self.uploader = Uploader()
@@ -49,24 +47,25 @@ class Executor(Processor):
         self.metadata_dir = prepare_dir(os.path.join(output_dir, "metadata"))
         self.channel_names_path = os.path.join(output_dir, "channel_names.txt")
 
-        self.available_channels, self._existing_channels = self._load_channels(
-            channel_names_to_process_path=channel_names_to_process_path,
-        )
         self.dataset: Dataset = None
         self.cache_dir = os.path.join(os.getcwd(), ".cache")
 
-    def _load_channels(self, channel_names_to_process_path: str = None) -> Processor:
+    def load_channels(
+        self, channel_names_to_process_path: str = None,
+        overwrite: bool = False,
+    ) -> Processor:
         """
         Load channels to process.
         :param channel_names_to_process_path:   Path to file containing channel names
                                                 to process.
+        :param overwrite:                       Whether to overwrite existing channels.
         :return:                                Executor.
         """
         # Get available channel names.
-        available_channels = set(get_dataset_config_names(self.src_repo_id)) - {"all"}
+        self.available_channels = set(get_dataset_config_names(self.src_repo_id)) - {"all"}
 
         # Get existing channel names.
-        existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
+        self._existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
 
         # Get channel names to process.
         new_channels = set()
@@ -74,21 +73,36 @@ class Executor(Processor):
             with open(channel_names_to_process_path, "r") as f:
                 new_channels = set(f.read().split())
 
-        available_channels = available_channels.intersection(new_channels)
-        available_channels -= existing_channels
-        return list(available_channels), list(existing_channels)
+        self.available_channels = self.available_channels.intersection(new_channels)
+        if overwrite:
+            self._existing_channels -= self.available_channels
+        else:
+            self.available_channels -= self._existing_channels
 
-    def load_dataset(self, channel: str) -> Processor:
+        self.available_channels = list(self.available_channels)
+        self._existing_channels = list(self._existing_channels)
+        return self
+
+    def load_dataset(
+        self, channel: str,
+        remove_columns: Union[str, list[str]] = None,
+    ) -> Processor:
         """
         Load dataset.
         :param channel:     Channel name.
+        :param remove_columns
         :return:            Executor.
         """
+        disable_progress_bar()
         self.dataset = load_dataset(
             self.src_repo_id, channel,
             split="train",
             cache_dir=self.cache_dir,
         )
+        if remove_columns:
+            self.dataset = self.dataset.remove_columns(remove_columns)
+        enable_progress_bar()
+
         self.num_samples_before = self.dataset.num_rows
         self.num_samples_after = 0
         return self
@@ -161,11 +175,11 @@ class Executor(Processor):
             num_samples=self.num_samples_after,
         )
 
-    def get_num_samples_lost(self) -> int:
+    def get_num_samples_change(self) -> int:
         """
         Get number of samples lost.
         """
-        return self.num_samples_after - self.num_samples_before
+        return abs(self.num_samples_after - self.num_samples_before)
 
     def save_metadata(self, channel: str) -> None:
         """
@@ -175,11 +189,13 @@ class Executor(Processor):
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
+        disable_progress_bar()
         self.dataset.to_parquet(metadata_path)
+        enable_progress_bar()
 
         self._existing_channels.append(channel)
         with open(self.channel_names_path, "w") as f:
-            f.write("\n".join(self._existing_channels))
+            f.write("\n".join(sorted(self._existing_channels)))
 
     def upload_metadata_to_hub(
         self, channel: str,
