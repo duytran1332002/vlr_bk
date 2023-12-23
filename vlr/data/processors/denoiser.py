@@ -1,113 +1,96 @@
 import os
 import torch
 import torchaudio
-import numpy as np
-import soundfile as sf
 from denoiser import pretrained
 from denoiser.dsp import convert_audio
-from vlr.data.processors.processor import Processor
+from .processor import Processor
 
 
 class Denoiser(Processor):
     """
     This class is used to denoise audio array.
     """
-    def __init__(
-        self, audio_dir: str,
-        denoised_dir: str,
-        sampling_rate: int = 16000,
-        overwrite: bool = False,
-    ) -> None:
+    def __init__(self) -> None:
         """
-        :param audio_dir:       Path to directory containing sound files.
-        :param denoised_dir:    Path to directory containing denoised sound files.
-        :param sampling_rate:   Sampling rate.
-        :param overwrite:       Overwrite existing files.
         """
-        self.model = pretrained.dns64().cuda()
-        self.audio_dir = audio_dir
-        self.denoised_dir = denoised_dir
-        self.sampling_rate = sampling_rate
-        self.resampler = torchaudio.transforms.Resample(
-            orig_freq=self.model.sample_rate,
-            new_freq=self.sampling_rate,
-        )
-        self.overwrite = overwrite
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.model = pretrained.dns64().to(self.device)
 
-    def process_sample(self, sample: dict) -> dict:
+    def process_sample(
+        self, sample: dict,
+        audio_output_dir: str,
+        output_sampling_rate: int = 16000,
+    ) -> dict:
         """
         Denoise audio array.
-        :param sample:          Sample.
-        :return:                Sample updated with path to denoised audio array.
+        :param sample:                  Sample.
+        :param audio_output_dir:        Path to directory containing denoised audio array.
+        :param output_sampling_rate:    Sampling rate of denoised audio array.
+        :return:                        Sample updated with path to denoised audio array.
         """
-        audio_path = os.path.join(
-            self.audio_dir, sample["channel_name"], sample["id"] + ".wav"
-        )
-        denoised_path = os.path.join(
-            self.denoised_dir, sample["channel_name"], sample["id"] + ".wav"
-        )
+        audio_output_path = os.path.join(audio_output_dir, sample["id"] + ".wav")
 
-        if self.overwrite or not os.path.exists(denoised_path):
-            audio_array, sampling_rate = torchaudio.load(audio_path)
+        if not os.path.exists(audio_output_path):
+            audio_array, sampling_rate = torchaudio.load(sample["audio"])
             audio_array = convert_audio(
-                audio_array.cuda(),
+                audio_array.to(self.device),
                 sampling_rate,
                 self.model.sample_rate,
                 self.model.chin
             )
 
             with torch.no_grad():
-                output = self.model(audio_array[None].float())
-            denoised_audio_array = self.resampler(output[0].cpu()).numpy()
+                denoised_audio_array = self.model(audio_array[None].float())[0].cpu()
 
-            sf.write(
-                denoised_path,
-                np.ravel(denoised_audio_array),
-                self.sampling_rate,
+            torchaudio.save(
+                audio_output_path,
+                denoised_audio_array,
+                output_sampling_rate,
             )
 
-        sample["sampling_rate"] = self.sampling_rate
+        sample["sampling_rate"] = output_sampling_rate
         return sample
 
-    def process_batch(self, batch: dict) -> dict:
+    def process_batch(
+        self, batch: dict,
+        audio_output_dir: str,
+        output_sampling_rate: int = 16000,
+    ) -> dict:
         """
         Denoise audio array.
-        :param batch:           Batch of samples.
-        :return:                Samples updated with path to denoised audio array.
+        :param batch:                   Batch of samples.
+        :param audio_output_dir:        Path to directory containing denoised audio array.
+        :param output_sampling_rate:    Sampling rate of denoised audio array.
+        :return:                        Samples updated with path to denoised audio array.
         """
         audio_arrays = []
         indexes = [0]
-        for id, channel_name in zip(batch["id"], batch["channel"]):
-            audio_path = os.path.join(
-                self.audio_dir, channel_name, id + ".wav"
-            )
+        for id, audio_path in zip(batch["id"], batch["audio"]):
+            audio_output_path = os.path.join(audio_output_dir, id + ".wav")
+            if os.path.exists(audio_output_path):
+                continue
             audio_array, sampling_rate = torchaudio.load(audio_path)
             audio_array = convert_audio(
-                audio_array.cuda(),
+                audio_array.to(self.device),
                 sampling_rate,
                 self.model.sample_rate,
                 self.model.chin
             )
             audio_arrays.append(audio_array)
             indexes.append(indexes[-1] + audio_array.shape[1])
-        audio_arrays = torch.cat(audio_arrays, dim=1).cuda()
+        audio_arrays = torch.cat(audio_arrays, dim=1).to(self.device)
 
         with torch.no_grad():
-            output = self.model(audio_arrays[None].float())
-        denoised_audio_arrays = self.resampler(output[0].cpu()).numpy()
+            denoised_audio_arrays = self.model(audio_array[None].float())[0].cpu()
 
-        for i, (id, channel_name) in enumerate(zip(batch["id"], batch["channel"])):
-            denoised_path = os.path.join(
-                self.denoised_dir, channel_name, id + ".wav"
+        for i, id in enumerate(batch["id"]):
+            denoised_audio_array = denoised_audio_arrays[:, indexes[i]:indexes[i+1]]
+            audio_output_path = os.path.join(audio_output_dir, id + ".wav")
+            torchaudio.save(
+                audio_output_path,
+                denoised_audio_array,
+                output_sampling_rate,
             )
 
-            if self.overwrite or not os.path.exists(denoised_path):
-                denoised_audio_array = denoised_audio_arrays[:, indexes[i]:indexes[i+1]]
-                sf.write(
-                    denoised_path,
-                    np.ravel(denoised_audio_array),
-                    self.sampling_rate,
-                )
-
-        batch["sampling_rate"] = [self.sampling_rate] * len(batch["id"])
+        batch["sampling_rate"] = [output_sampling_rate] * len(batch["id"])
         return batch
