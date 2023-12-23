@@ -26,7 +26,7 @@ class Slicer(Processor):
             "sampling_rate": [],
         }
 
-        for id, video_path in zip(batch["id"], batch["video"]):
+        for (id, channel, video_path) in zip(batch["id"], batch["channel"], batch["video"]):
             segment_ids = []
             with mp.VideoFileClip(video_path) as video:
                 duration = video.duration
@@ -66,7 +66,7 @@ class Slicer(Processor):
                     segment_ids.append(segment_id)
 
                 new_batch["id"].extend(segment_ids)
-                new_batch["channel"].extend([batch["channel"]] * len(segment_ids))
+                new_batch["channel"].extend([channel] * len(segment_ids))
                 new_batch["duration"].extend([clip_duration] * len(segment_ids))
                 new_batch["fps"].extend([fps] * len(segment_ids))
                 new_batch["sampling_rate"].extend([sampling_rate] * len(segment_ids))
