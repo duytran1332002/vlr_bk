@@ -24,7 +24,6 @@ def zip_dir(zip_dir: str, overwrite: bool = False) -> str:
     """
     if overwrite and os.path.exists(zip_dir + ".zip"):
         os.remove(zip_dir + ".zip")
-    print("Making directory archive...")
     shutil.make_archive(
         zip_dir, "zip", os.path.dirname(zip_dir), os.path.basename(zip_dir)
     )
