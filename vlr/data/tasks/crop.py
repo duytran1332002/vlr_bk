@@ -61,10 +61,10 @@ def main(args: argparse.Namespace) -> None:
         src_repo_id="fptu/vietnamese-speaker-clip",
         dest_repo_id="fptu/vietnamese-speaker-lip-clip",
         output_dir=args.output_dir,
+        overwrite=args.overwrite,
     )
     executor = executor.load_channels(
         channel_names_to_process_path=args.channel_names_path,
-        overwrite=args.overwrite,
     )
 
     for channel in tqdm(
