@@ -14,7 +14,7 @@ class Transcriber(Processor):
     This class is used to transcribe audio into text.
     """
     def __init__(
-        self, repo_id: str,
+        self, repo_id: str = "nguyenvulebinh/wav2vec2-large-vi-vlsp2020",
     ) -> None:
         """
         :param model_path:          Path to model.

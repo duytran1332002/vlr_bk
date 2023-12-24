@@ -142,7 +142,7 @@ class Executor(Processor):
     def process_batch(
         self, fn_kwargs: dict,
         batch_size: int,
-        num_proc: int = None,
+        num_proc: int = 1,
         remove_columns: Union[str, list[str]] = None,
     ) -> Processor:
         """
