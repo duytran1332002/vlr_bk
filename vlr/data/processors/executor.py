@@ -31,6 +31,7 @@ class Executor(Processor):
         dest_repo_id: str,
         output_dir: str,
         processor_kwargs: dict = {},
+        overwrite: bool = False,
     ) -> None:
         """
         :param processor_name:                  Name of processor.
@@ -38,6 +39,7 @@ class Executor(Processor):
         :param dest_repo_id:                    Destination repository id.
         :param output_dir:                      Output directory.
         :param processor_kwargs:                Keyword arguments for processor.
+        :param overwrite:                       Whether to overwrite existing channels.
         """
         self.processor: Processor = self.PROCESSORS[processor_name](**processor_kwargs)
         self.uploader = Uploader()
@@ -49,16 +51,15 @@ class Executor(Processor):
 
         self.dataset: Dataset = None
         self.cache_dir = os.path.join(os.getcwd(), ".cache")
+        self.overwrite = overwrite
 
     def load_channels(
         self, channel_names_to_process_path: str = None,
-        overwrite: bool = False,
     ) -> Processor:
         """
         Load channels to process.
         :param channel_names_to_process_path:   Path to file containing channel names
                                                 to process.
-        :param overwrite:                       Whether to overwrite existing channels.
         :return:                                Executor.
         """
         # Get available channel names.
@@ -74,7 +75,7 @@ class Executor(Processor):
                 new_channels = set(f.read().split())
 
         self.available_channels = self.available_channels.intersection(new_channels)
-        if overwrite:
+        if self.overwrite:
             self._existing_channels -= self.available_channels
         else:
             self.available_channels -= self._existing_channels
@@ -126,11 +127,15 @@ class Executor(Processor):
             fn_kwargs=fn_kwargs,
             num_proc=num_proc,
             remove_columns=remove_columns,
+            load_from_cache_file=not self.overwrite,
         )
+        disable_progress_bar()
         self.dataset = self.dataset.filter(
             lambda sample: sample["id"] is not None,
             num_proc=os.cpu_count(),
+            load_from_cache_file=not self.overwrite,
         )
+        enable_progress_bar()
         self.num_samples_after = self.dataset.num_rows
         return self
 
@@ -155,10 +160,12 @@ class Executor(Processor):
             batched=True, batch_size=batch_size,
             num_proc=num_proc,
             remove_columns=remove_columns,
+            load_from_cache_file=not self.overwrite,
         )
         self.dataset = self.dataset.filter(
             lambda sample: sample["id"] is not None,
             num_proc=os.cpu_count(),
+            load_from_cache_file=not self.overwrite,
         )
         self.num_samples_after = self.dataset.num_rows
         return self
