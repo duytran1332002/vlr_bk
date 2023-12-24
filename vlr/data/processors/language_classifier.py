@@ -1,4 +1,3 @@
-import os
 import torch
 import torchaudio
 from speechbrain.pretrained import EncoderClassifier
@@ -12,6 +11,7 @@ class LanguageClassifier(Processor):
     def __init__(self) -> None:
         """
         """
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = EncoderClassifier.from_hparams(
             source="speechbrain/lang-id-voxlingua107-ecapa",
             savedir="tmp"
@@ -29,9 +29,12 @@ class LanguageClassifier(Processor):
                 orig_freq=sampling_rate,
                 new_freq=self.sampling_rate,
             )
-        _, score, lang_idx, _ = self.model.classify_batch(audio_array.cuda())
+
+        _, score, lang_idx, _ = self.model.classify_batch(audio_array.to(self.device))
         score = score.exp().item()
         lang_idx = lang_idx.item()
+
+        torch.cuda.empty_cache()
         return lang_idx, score
 
     def is_vietnamese(
