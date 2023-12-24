@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
         "--clean-up",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Upload to hub after processing.",
+        help="Clean up all downloaded files after processing.",
     )
     return parser.parse_args()
 
@@ -78,7 +78,10 @@ def main(args: argparse.Namespace):
         src_repo_id="fptu/vietnamese-speaker-video",
         dest_repo_id="fptu/vietnamese-speaker-clip",
         output_dir=args.output_dir,
+    )
+    executor = executor.load_channels(
         channel_names_to_process_path=args.channel_names_path,
+        overwrite=args.overwrite,
     )
 
     for channel in tqdm(
@@ -102,7 +105,7 @@ def main(args: argparse.Namespace):
 
         # Get dataset.
         print("Loading dataset...")
-        executor = executor.load_dataset(channel)
+        executor = executor.load_dataset(channel=channel)
 
         # Extract audio and visual.
         print("Extracting audio and visual from dataset...")
@@ -124,7 +127,7 @@ def main(args: argparse.Namespace):
         print("Checking number of samples...")
         executor.check_num_samples_in_dir(channel_visual_dir)
         executor.check_num_samples_in_dir(channel_audio_dir)
-        print(f"Number of samples lost: {executor.get_num_samples_lost()}")
+        print(f"\tNumber of samples added: {executor.get_num_samples_change()}")
 
         # Save metadata.
         print("Saving metada...")
@@ -133,16 +136,14 @@ def main(args: argparse.Namespace):
         # Upload to hub.
         if args.upload_to_hub:
             print("Uploading to hub...")
-            executor.upload_metadata_to_hub(channel)
+            executor.upload_metadata_to_hub(channel=channel)
             executor.zip_and_upload_dir(
                 dir_path=channel_visual_dir,
                 path_in_repo=os.path.join("visual", channel + ".zip"),
-                overwrite=args.overwrite,
             )
             executor.zip_and_upload_dir(
                 dir_path=channel_audio_dir,
                 path_in_repo=os.path.join("audio", channel + ".zip"),
-                overwrite=args.overwrite,
             )
 
         print("-" * (13 + len(channel) + 2 * 20))
