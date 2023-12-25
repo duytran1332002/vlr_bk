@@ -1,8 +1,7 @@
 # Copyright 2023 Thinh T. Duong
 import os
 import datasets
-from requests import get
-from huggingface_hub import HfFolder
+from huggingface_hub import HfFileSystem
 
 
 logger = datasets.logging.get_logger(__name__)
@@ -15,18 +14,16 @@ _DESCRIPTION = """
     This dataset contain videos of Vietnamese speakers.
 """
 _HOMEPAGE = "https://github.com/duytran1332002/vlr"
-_REPO = "https://huggingface.co/datasets/fptu/vietnamese-speaker-video/resolve/main"
+_REPO_PATH = "datasets/fptu/vietnamese-speaker-video"
+_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/main"
 _URLS = {
-    "channels": f"{_REPO}/channels.txt",
-    "meta": f"{_REPO}/metadata/" + "{channel}.json",
-    "video": f"{_REPO}/video/" + "{channel}.zip",
+    "meta": f"{_REPO_URL}/metadata/" + "{channel}.json",
+    "video": f"{_REPO_URL}/video/" + "{channel}.zip",
 }
-_HEADERS = {
-    "Authorization": f"Bearer {HfFolder.get_token()}",
-}
-_CONFIGS = list(set([
-    x.decode("UTF8") for x in get(_URLS["channels"], headers=_HEADERS).iter_lines()
-]))
+_CONFIGS = [
+    os.path.basename(file_name)[:-5]
+    for file_name in HfFileSystem().listdir(_REPO_PATH, detail=False)
+]
 _CONFIGS.append("all")
 
 
@@ -104,15 +101,14 @@ class VietnameseSpeakerVideo(datasets.GeneratorBasedBuilder):
     ) -> tuple[int, dict]:
         """
         Generate examples from metadata.
-        :param meta_paths:      Paths to metadata.
-        :param video_dict:      Paths to directory containing videos.
-        :yield:                 Example.
+        :param metadata_paths:      Paths to metadata.
+        :param video_dict:          Paths to directory containing videos.
+        :yield:                     Example.
         """
         dataset = datasets.load_dataset(
             "json",
             data_files=metadata_paths,
             split="train",
-            num_proc=os.cpu_count(),
         )
         for i, sample in enumerate(dataset):
             channel = sample["channel"]

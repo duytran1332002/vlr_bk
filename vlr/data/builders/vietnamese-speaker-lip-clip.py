@@ -1,8 +1,7 @@
 # Copyright 2023 Thinh T. Duong
 import os
 import datasets
-from requests import get
-from huggingface_hub import HfFolder
+from huggingface_hub import HfFileSystem
 
 
 logger = datasets.logging.get_logger(__name__)
@@ -15,20 +14,18 @@ _DESCRIPTION = """
     This dataset contain short clips of Vietnamese speakers.
 """
 _HOMEPAGE = "https://github.com/duytran1332002/vlr"
-_MAIN_REPO = "https://huggingface.co/datasets/fptu/vietnamese-speaker-lip-clip/resolve/main"
-_AUDIO_REPO = "https://huggingface.co/datasets/fptu/vietnamese-speaker-clip/resolve/main"
+_MAIN_REPO_PATH = "datasets/fptu/vietnamese-speaker-lip-clip"
+_AUDIO_REPO_PATH = "datasets/fptu/vietnamese-speaker-clip"
+_REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
-    "channels": f"{_MAIN_REPO}/channels.txt",
-    "meta": f"{_MAIN_REPO}/metadata/" + "{channel}.parquet",
-    "visual": f"{_MAIN_REPO}/visual/" + "{channel}.zip",
-    "audio": f"{_AUDIO_REPO}/audio/" + "{channel}.zip",
+    "meta": f"{_REPO_URL}/metadata/".format(_MAIN_REPO_PATH) + "{channel}.parquet",
+    "visual": f"{_REPO_URL}/visual/".format(_MAIN_REPO_PATH) + "{channel}.zip",
+    "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
 }
-_HEADERS = {
-    "Authorization": f"Bearer {HfFolder.get_token()}",
-}
-_CONFIGS = list(set([
-    x.decode("UTF8") for x in get(_URLS["channels"], headers=_HEADERS).iter_lines()
-]))
+_CONFIGS = [
+    os.path.basename(file_name)[:-8]
+    for file_name in HfFileSystem().listdir(_MAIN_REPO_PATH, detail=False)
+]
 _CONFIGS.append("all")
 
 
@@ -117,16 +114,15 @@ class VietnameseSpeakerLipClip(datasets.GeneratorBasedBuilder):
     ) -> tuple[int, dict]:
         """
         Generate examples from metadata.
-        :param meta_paths:      Paths to metadata.
-        :param visual_dict:     Paths to directory containing videos.
-        :param audio_dict:      Paths to directory containing audios.
-        :yield:                 Example.
+        :param metadata_paths:      Paths to metadata.
+        :param visual_dict:         Paths to directory containing videos.
+        :param audio_dict:          Paths to directory containing audios.
+        :yield:                     Example.
         """
         dataset = datasets.load_dataset(
             "parquet",
             data_files=metadata_paths,
             split="train",
-            num_proc=os.cpu_count(),
         )
         for i, sample in enumerate(dataset):
             channel = sample["channel"]

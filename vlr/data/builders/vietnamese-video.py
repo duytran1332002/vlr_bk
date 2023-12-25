@@ -1,8 +1,7 @@
 # Copyright 2023 Thinh T. Duong
 import os
 import datasets
-from requests import get
-from huggingface_hub import HfFolder
+from huggingface_hub import HfFileSystem
 
 
 logger = datasets.logging.get_logger(__name__)
@@ -15,17 +14,15 @@ _DESCRIPTION = """
     This dataset contain videos of Vietnamese speakers.
 """
 _HOMEPAGE = "https://github.com/duytran1332002/vlr"
-_REPO = "https://huggingface.co/datasets/fptu/vietnamese-video/resolve/main"
+_REPO_PATH = "datasets/fptu/vietnamese-video"
+_REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/main"
 _URLS = {
-    "channels": f"{_REPO}/channels.txt",
-    "meta": f"{_REPO}/metadata/" + "{channel}.txt",
+    "meta": f"{_REPO_URL}/metadata/" + "{channel}.parquet",
 }
-_HEADERS = {
-    "Authorization": f"Bearer {HfFolder.get_token()}",
-}
-_CONFIGS = list(set([
-    x.decode("UTF8") for x in get(_URLS["channels"], headers=_HEADERS).iter_lines()
-]))
+_CONFIGS = [
+    os.path.basename(file_name)[:-8]
+    for file_name in HfFileSystem().listdir(_REPO_PATH, detail=False)
+]
 _CONFIGS.append("all")
 
 
@@ -79,37 +76,27 @@ class VietnameseVideo(datasets.GeneratorBasedBuilder):
             [_URLS["meta"].format(channel=channel) for channel in config_names]
         )
 
-        metadata_dict = {
-            channel: path for channel, path in zip(config_names, metadata_paths)
-        }
-
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
-                    "metadata_dict": metadata_dict,
+                    "metadata_paths": metadata_paths,
                 },
             ),
         ]
 
     def _generate_examples(
-        self, metadata_dict: dict,
+        self, metadata_paths: list[str],
     ) -> tuple[int, dict]:
         """
         Generate examples from metadata.
-        :param meta_paths:      Paths to metadata.
-        :yield:                 Example.
+        :param metadata_paths:      Paths to metadata.
+        :yield:                     Example.
         """
-        for channel, metadata_path in metadata_dict.items():
-            dataset = datasets.load_dataset(
-                "text",
-                data_files=metadata_path,
-                split="train",
-                num_proc=os.cpu_count(),
-            )
-            for i, sample in enumerate(dataset):
-                yield i, {
-                    "id": os.path.basename(sample["text"]),
-                    "channel": channel,
-                    "video": sample["text"],
-                }
+        dataset = datasets.load_dataset(
+            "parquet",
+            data_files=metadata_paths,
+            split="train",
+        )
+        for i, sample in enumerate(dataset):
+            yield i, sample
