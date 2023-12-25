@@ -26,7 +26,7 @@ _URLS = {
 }
 _CONFIGS = [
     os.path.basename(file_name)[:-8]
-    for file_name in HfFileSystem().listdir(_META_REPO_PATH, detail=False)
+    for file_name in HfFileSystem().listdir(_META_REPO_PATH + "/metadata", detail=False)
 ]
 _CONFIGS.append("all")
 
