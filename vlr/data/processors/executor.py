@@ -47,7 +47,6 @@ class Executor(Processor):
         self.dest_repo_id = dest_repo_id
 
         self.metadata_dir = prepare_dir(os.path.join(output_dir, "metadata"))
-        self.channel_names_path = os.path.join(output_dir, "channel_names.txt")
 
         self.dataset: Dataset = None
         self.cache_dir = os.path.join(os.getcwd(), ".cache")
@@ -65,9 +64,6 @@ class Executor(Processor):
         # Get available channel names.
         self.available_channels = set(get_dataset_config_names(self.src_repo_id)) - {"all"}
 
-        # Get existing channel names.
-        self._existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
-
         # Get channel names to process.
         new_channels = set()
         if channel_names_to_process_path:
@@ -75,13 +71,11 @@ class Executor(Processor):
                 new_channels = set(f.read().split())
 
         self.available_channels = self.available_channels.intersection(new_channels)
-        if self.overwrite:
-            self._existing_channels -= self.available_channels
-        else:
-            self.available_channels -= self._existing_channels
+        if not self.overwrite:
+            existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
+            self.available_channels -= existing_channels
 
         self.available_channels = list(self.available_channels)
-        self._existing_channels = list(self._existing_channels)
         return self
 
     def load_dataset(
@@ -200,10 +194,6 @@ class Executor(Processor):
         self.dataset.to_parquet(metadata_path)
         enable_progress_bar()
 
-        self._existing_channels.append(channel)
-        with open(self.channel_names_path, "w") as f:
-            f.write("\n".join(sorted(self._existing_channels)))
-
     def upload_metadata_to_hub(
         self, channel: str,
         overwrite: bool = True,
@@ -217,12 +207,6 @@ class Executor(Processor):
             file_path=metadata_path,
             repo_id=self.dest_repo_id,
             path_in_repo=os.path.join("metadata", channel + ".parquet"),
-            overwrite=overwrite,
-        )
-        self.uploader.upload_file(
-            file_path=self.channel_names_path,
-            repo_id=self.dest_repo_id,
-            path_in_repo="channels.txt",
             overwrite=overwrite,
         )
 
