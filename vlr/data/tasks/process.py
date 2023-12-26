@@ -5,7 +5,7 @@ sys.path.append(os.getcwd())
 
 import argparse
 from tqdm import tqdm
-from vlr.data.processors.new_executor import Executor
+from vlr.data.processors import Executor
 from vlr.data.utils import TaskConfig, SlicingTaskConfig, DenoisingTaskConfig
 from vlr.data.utils import CroppingTaskConfig, TranscribingTaskConfig
 
