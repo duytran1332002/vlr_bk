@@ -88,7 +88,7 @@ def main(args: argparse.Namespace) -> None:
 
         # Transcribe.
         print("Transcribing...")
-        executor = executor.process_sample(
+        executor = executor.process(
             fn_kwargs={
                 "transcript_output_dir": channel_transcript_dir,
                 "language_threshold": 0.99,

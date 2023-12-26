@@ -91,7 +91,7 @@ def main(args: argparse.Namespace) -> None:
 
         # Crop mouth regions.
         print("Cropping mouth regions...")
-        executor = executor.process_sample(
+        executor = executor.process(
             fn_kwargs={
                 "visual_output_dir": channel_visual_dir,
                 "padding": 20,

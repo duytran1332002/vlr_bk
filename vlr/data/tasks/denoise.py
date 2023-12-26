@@ -90,7 +90,7 @@ def main(args: argparse.Namespace):
 
         # Denoise audio.
         print("Denoising audio...")
-        executor = executor.process_sample(
+        executor = executor.process(
             fn_kwargs={
                 "audio_output_dir": channel_audio_dir,
                 "output_sampling_rate": 16000,
