@@ -16,7 +16,7 @@ class Denoiser(Processor):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = pretrained.dns64().to(self.device)
 
-    def process_sample(
+    def process(
         self, sample: dict,
         audio_output_dir: str,
         output_sampling_rate: int = 16000,
@@ -28,10 +28,10 @@ class Denoiser(Processor):
         :param output_sampling_rate:    Sampling rate of denoised audio array.
         :return:                        Sample updated with path to denoised audio array.
         """
-        audio_output_path = os.path.join(audio_output_dir, sample["id"] + ".wav")
+        audio_output_path = os.path.join(audio_output_dir, sample["id"][0] + ".wav")
 
         if not os.path.exists(audio_output_path):
-            audio_array, sampling_rate = torchaudio.load(sample["audio"])
+            audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
             audio_array = convert_audio(
                 audio_array.to(self.device),
                 sampling_rate,
@@ -48,5 +48,5 @@ class Denoiser(Processor):
                 output_sampling_rate,
             )
 
-        sample["sampling_rate"] = output_sampling_rate
+        sample["sampling_rate"][0] = output_sampling_rate
         return sample

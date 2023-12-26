@@ -102,40 +102,8 @@ class Executor(Processor):
         self.num_samples_after = 0
         return self
 
-    def process_sample(
+    def process(
         self, fn_kwargs: dict,
-        num_proc: int = None,
-        remove_columns: Union[str, list[str]] = None,
-    ) -> Processor:
-        """
-        Process sample.
-        :param fn_kwargs:           Keyword arguments for function.
-        :param num_proc:            Number of processes.
-        :param remove_columns:      Columns to remove.
-        :return:                    Executor.
-        """
-        assert self.dataset is not None, "Dataset is not loaded yet."
-
-        self.dataset = self.dataset.map(
-            self.processor.process_sample,
-            fn_kwargs=fn_kwargs,
-            num_proc=num_proc,
-            remove_columns=remove_columns,
-            load_from_cache_file=not self.overwrite,
-        )
-        disable_progress_bar()
-        self.dataset = self.dataset.filter(
-            lambda sample: sample["id"] is not None,
-            num_proc=os.cpu_count(),
-            load_from_cache_file=not self.overwrite,
-        )
-        enable_progress_bar()
-        self.num_samples_after = self.dataset.num_rows
-        return self
-
-    def process_batch(
-        self, fn_kwargs: dict,
-        batch_size: int,
         num_proc: int = 1,
         remove_columns: Union[str, list[str]] = None,
     ) -> Processor:
@@ -149,9 +117,9 @@ class Executor(Processor):
         assert self.dataset is not None, "Dataset is not loaded yet."
 
         self.dataset = self.dataset.map(
-            self.processor.process_batch,
+            self.processor.process,
             fn_kwargs=fn_kwargs,
-            batched=True, batch_size=batch_size,
+            batched=True, batch_size=1,
             num_proc=num_proc,
             remove_columns=remove_columns,
             load_from_cache_file=not self.overwrite,

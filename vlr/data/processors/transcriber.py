@@ -13,9 +13,7 @@ class Transcriber(Processor):
     """
     This class is used to transcribe audio into text.
     """
-    def __init__(
-        self, repo_id: str = "nguyenvulebinh/wav2vec2-large-vi-vlsp2020",
-    ) -> None:
+    def __init__(self) -> None:
         """
         :param model_path:          Path to model.
         :param lm_gram_name:        Language model name.
@@ -25,6 +23,7 @@ class Transcriber(Processor):
         :param overwrite:           Overwrite existing files.
         """
         # Load the model and the processor.
+        repo_id = "nguyenvulebinh/wav2vec2-large-vi-vlsp2020"
         self.model = (
             SourceFileLoader(
                 "model", hf_hub_download(
@@ -48,7 +47,7 @@ class Transcriber(Processor):
         # Prepare language classifier.
         self.language_classifier = LanguageClassifier()
 
-    def process_sample(
+    def process(
         self, sample: dict,
         transcript_output_dir: str,
         language_threshold: float = 0.99,
@@ -59,10 +58,10 @@ class Transcriber(Processor):
         :param sample:          Audio sample.
         :return:                Sample with path to transcript.
         """
-        transcript_output_path = os.path.join(transcript_output_dir, sample["id"] + ".txt")
+        transcript_output_path = os.path.join(transcript_output_dir, sample["id"][0] + ".txt")
         if not os.path.exists(transcript_output_path):
             try:
-                audio_array, sampling_rate = torchaudio.load(sample["audio"])
+                audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
                 if self.language_classifier.is_vietnamese(
                     audio_array=audio_array,
                     sampling_rate=sampling_rate,
@@ -82,7 +81,7 @@ class Transcriber(Processor):
                 with open(transcript_output_path, "w", encoding="utf-8") as f:
                     print(transcript.strip(), file=f)
             except Exception:
-                sample["id"] = None
+                sample["id"][0] = None
         return sample
 
     def check_output(self, transcript: str) -> str:

@@ -18,7 +18,7 @@ class Cropper(Processor):
             291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
         ]
 
-    def process_sample(
+    def process(
         self, sample: dict,
         visual_output_dir: str,
         padding: int = 20,
@@ -30,10 +30,10 @@ class Cropper(Processor):
         :param padding:             Padding.
         :return:                    Sample with path to video of cropped mouth region.
         """
-        visual_output_path = os.path.join(visual_output_dir, sample["id"] + ".mp4")
+        visual_output_path = os.path.join(visual_output_dir, sample["id"][0] + ".mp4")
 
         if not os.path.exists(visual_output_path):
-            cap = cv2.VideoCapture(sample["visual"])
+            cap = cv2.VideoCapture(sample["visual"][0])
             mouths = []
             max_width, max_height = 0, 0
             for frame in self.get_frames(cap):
@@ -46,18 +46,18 @@ class Cropper(Processor):
 
             if self.check_output(
                 num_cropped=len(mouths),
-                sample_fps=sample["fps"],
-                sample_duration=sample["duration"],
+                sample_fps=sample["fps"][0],
+                sample_duration=sample["duration"][0],
             ):
                 self.write_video(
                     video_path=visual_output_path,
                     frames=mouths,
                     frame_width=max_width,
                     frame_height=max_height,
-                    fps=sample["fps"],
+                    fps=sample["fps"][0],
                 )
             else:
-                sample["id"] = None
+                sample["id"][0] = None
             cap.release()
 
         return sample
