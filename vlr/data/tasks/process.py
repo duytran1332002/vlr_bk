@@ -5,12 +5,23 @@ sys.path.append(os.getcwd())
 
 import argparse
 from tqdm import tqdm
-from vlr.data.processors import Executor
-from vlr.data.utils import prepare_dir
+from vlr.data.processors.new_executor import Executor
+from vlr.data.utils import TaskConfig, SlicingTaskConfig, DenoisingTaskConfig
+from vlr.data.utils import CroppingTaskConfig, TranscribingTaskConfig
 
 
 def parse_args() -> argparse.Namespace:
+    """
+    Get arguments from command line.
+    :return:    Arguments from command line.
+    """
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--task",
+        type=str,
+        required=True,
+        help="Available tasks: slice, crop, denoise, transcribe.",
+    )
     parser.add_argument(
         "--output-dir",
         type=str,
@@ -50,22 +61,37 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main(args: argparse.Namespace) -> None:
+def get_task_config(args: argparse.Namespace) -> TaskConfig:
     """
-    This function is used to transcribe audio files.
+    Get task config.
+    :param args:    Arguments from command line.
+    :return:        Task config.
+    """
+    task_dict = {
+        "slice": SlicingTaskConfig,
+        "crop": CroppingTaskConfig,
+        "denoise": DenoisingTaskConfig,
+        "transcribe": TranscribingTaskConfig,
+    }
+    task_config = task_dict[args.task](
+        output_dir=args.output_dir,
+        channel_names_path=args.channel_names_path,
+        overwrite=args.overwrite,
+        upload_to_hub=args.upload_to_hub,
+        clean_up=args.clean_up,
+        version=args.version,
+    )
+    return task_config
+
+
+def main(configs: TaskConfig) -> None:
+    """
+    This function is used to slice video into segments,
+    then save audio and visual separately.
     :param args:    Arguments from command line.
     """
-    print("Initialize executor...")
-    executor = Executor(
-        processor_name="transcriber",
-        src_repo_id="fptu/denoised-vietnamese-audio",
-        dest_repo_id="fptu/purified-vietnamese-audio",
-        output_dir=args.output_dir,
-        overwrite=args.overwrite,
-    )
-    executor = executor.load_channels(
-        channel_names_to_process_path=args.channel_names_path,
-    )
+    print(f"Initialize executor for {configs.task} task...")
+    executor = Executor(configs=configs)
 
     for channel in tqdm(
         executor.available_channels,
@@ -77,51 +103,32 @@ def main(args: argparse.Namespace) -> None:
 
         # Prepare save directory.
         print("Preparing save directory...")
-        channel_transcript_dir = prepare_dir(
-            dir=os.path.join(args.output_dir, "transcripts", channel),
-            overwrite=args.overwrite,
-        )
+        executor.prepare_dir(channel=channel)
 
         # Get dataset.
         print("Loading dataset...")
         executor = executor.load_dataset(channel=channel)
 
-        # Transcribe.
-        print("Transcribing...")
-        executor = executor.process(
-            fn_kwargs={
-                "transcript_output_dir": channel_transcript_dir,
-                "language_threshold": 0.99,
-                "beam_width": 500,
-            },
-            remove_columns=["audio"],
-        )
+        # Extract audio and visual.
+        print("Processing data...")
+        executor = executor.process()
 
         # Check number of samples.
         print("Checking number of samples...")
-        executor.check_num_samples_in_dir(channel_transcript_dir)
-        print(f"\tNumber of samples lost: {executor.get_num_samples_change()}")
+        executor.check_num_samples_in_dir()
+        executor.print_num_samples_change()
 
-        # Save dataset.
         # Save metadata.
         print("Saving metada...")
         executor.save_metadata(channel)
 
         # Upload to hub.
-        if args.upload_to_hub:
-            print("Uploading to hub...")
-            executor.upload_metadata_to_hub(channel=channel)
-            executor.zip_and_upload_dir(
-                dir_path=channel_transcript_dir,
-                path_in_repo=os.path.join("transcripts", channel + ".zip"),
-            )
+        executor.upload_to_hub(channel)
 
         print("-" * (13 + len(channel) + 2 * 20))
 
-    if args.clean_up:
-        print("Cleaning up...")
-        executor.clean_cache()
+    executor.clean_cache()
 
 
 if __name__ == "__main__":
-    main(parse_args())
+    main(configs=get_task_config(args=parse_args()))
