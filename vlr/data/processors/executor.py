@@ -1,16 +1,14 @@
 import os
 import shutil
-from typing import Union
-from datasets import Dataset, load_dataset, get_dataset_config_names
-from datasets import enable_progress_bar, disable_progress_bar
+from .cropper import Cropper
+from .denoiser import Denoiser
 from .processor import Processor
 from .slicer import Slicer
-from .denoiser import Denoiser
-from .language_classifier import LanguageClassifier
 from .transcriber import Transcriber
-from .cropper import Cropper
 from .uploader import Uploader
-from vlr.data.utils import prepare_dir, check_num_samples_in_dir
+from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
+                      get_dataset_config_names, load_dataset)
+from vlr.data.utils import TaskConfig, check_num_samples_in_dir, prepare_dir
 
 
 class Executor(Processor):
@@ -18,43 +16,32 @@ class Executor(Processor):
     This processor is used to execute other processors.
     """
     PROCESSORS = {
-        "slicer": Slicer,
-        "denoiser": Denoiser,
-        "language_classifier": LanguageClassifier,
-        "transcriber": Transcriber,
-        "cropper": Cropper,
+        "slice": Slicer,
+        "denoise": Denoiser,
+        "transcribe": Transcriber,
+        "crop": Cropper,
     }
 
-    def __init__(
-        self, processor_name: str,
-        src_repo_id: str,
-        dest_repo_id: str,
-        output_dir: str,
-        processor_kwargs: dict = {},
-        overwrite: bool = False,
-    ) -> None:
+    def __init__(self, configs: TaskConfig) -> None:
         """
         :param processor_name:                  Name of processor.
         :param src_repo_id:                     Source repository id.
         :param dest_repo_id:                    Destination repository id.
         :param output_dir:                      Output directory.
-        :param processor_kwargs:                Keyword arguments for processor.
         :param overwrite:                       Whether to overwrite existing channels.
         """
-        self.processor: Processor = self.PROCESSORS[processor_name](**processor_kwargs)
+        self.configs = configs
+        self.processor: Processor = self.PROCESSORS[self.configs.task]()
         self.uploader = Uploader()
-        self.src_repo_id = src_repo_id
-        self.dest_repo_id = dest_repo_id
 
-        self.metadata_dir = prepare_dir(os.path.join(output_dir, "metadata"))
+        self.metadata_dir = prepare_dir(os.path.join(self.configs.output_dir, "metadata"))
 
         self.dataset: Dataset = None
         self.cache_dir = os.path.join(os.getcwd(), ".cache")
-        self.overwrite = overwrite
 
-    def load_channels(
-        self, channel_names_to_process_path: str = None,
-    ) -> Processor:
+        self.available_channels = self.__load_channels()
+
+    def __load_channels(self) -> list:
         """
         Load channels to process.
         :param channel_names_to_process_path:   Path to file containing channel names
@@ -62,93 +49,103 @@ class Executor(Processor):
         :return:                                Executor.
         """
         # Get available channel names.
-        self.available_channels = set(get_dataset_config_names(self.src_repo_id)) - {"all"}
+        available_channels = set(get_dataset_config_names(self.configs.src_repo_id)) - {"all"}
 
         # Get channel names to process.
         new_channels = set()
-        if channel_names_to_process_path:
-            with open(channel_names_to_process_path, "r") as f:
+        if self.configs.channel_names_path:
+            with open(self.configs.channel_names_path, "r") as f:
                 new_channels = set(f.read().split())
 
-        self.available_channels = self.available_channels.intersection(new_channels)
-        if not self.overwrite:
-            existing_channels = set(get_dataset_config_names(self.dest_repo_id)) - {"all"}
-            self.available_channels -= existing_channels
+        available_channels = available_channels.intersection(new_channels)
+        if not self.configs.overwrite and not self.configs.upload_to_hub:
+            existing_channels = set(get_dataset_config_names(self.configs.dest_repo_id)) - {"all"}
+            available_channels -= existing_channels
 
-        self.available_channels = list(self.available_channels)
-        return self
+        return list(available_channels)
+
+    def prepare_dir(self, channel: str) -> None:
+        """
+        Prepare directory.
+        :param channel:     Channel name.
+        """
+        self.configs = self.configs.prepare_dir(
+            channel=channel, overwrite=self.configs.overwrite
+        )
 
     def load_dataset(
         self, channel: str,
-        remove_columns: Union[str, list[str]] = None,
     ) -> Processor:
         """
         Load dataset.
         :param channel:     Channel name.
-        :param remove_columns
         :return:            Executor.
         """
         disable_progress_bar()
         self.dataset = load_dataset(
-            self.src_repo_id, channel,
+            self.configs.src_repo_id, channel,
             split="train",
             cache_dir=self.cache_dir,
         )
-        if remove_columns:
-            self.dataset = self.dataset.remove_columns(remove_columns)
+        if self.configs.remove_columns_loading:
+            self.dataset = self.dataset.remove_columns(
+                self.configs.remove_columns_loading
+            )
         enable_progress_bar()
 
         self.num_samples_before = self.dataset.num_rows
         self.num_samples_after = 0
         return self
 
-    def process(
-        self, fn_kwargs: dict,
-        num_proc: int = 1,
-        remove_columns: Union[str, list[str]] = None,
-    ) -> Processor:
+    def process(self) -> Processor:
         """
-        Process batch.
+        Process sample.
         :param fn_kwargs:           Keyword arguments for function.
-        :param batch_size:          Batch size.
         :param num_proc:            Number of processes.
         :param remove_columns:      Columns to remove.
+        :return:                    Executor.
         """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
+        task_kwargs = self.configs.get_task_kwargs()
         self.dataset = self.dataset.map(
             self.processor.process,
-            fn_kwargs=fn_kwargs,
+            fn_kwargs=task_kwargs["fn_kwargs"],
             batched=True, batch_size=1,
-            num_proc=num_proc,
-            remove_columns=remove_columns,
-            load_from_cache_file=not self.overwrite,
+            num_proc=task_kwargs["num_proc"],
+            remove_columns=task_kwargs["remove_columns"],
+            load_from_cache_file=not self.configs.overwrite,
         )
+        disable_progress_bar()
         self.dataset = self.dataset.filter(
             lambda sample: sample["id"] is not None,
             num_proc=os.cpu_count(),
-            load_from_cache_file=not self.overwrite,
+            load_from_cache_file=not self.configs.overwrite,
         )
+        enable_progress_bar()
         self.num_samples_after = self.dataset.num_rows
         return self
 
-    def check_num_samples_in_dir(self, dir_path: str) -> None:
+    def check_num_samples_in_dir(self) -> None:
         """
         Check if number of samples in directory matches expected number of samples.
         :param dir_path:    Path to directory.
         """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
-        check_num_samples_in_dir(
-            dir_path=dir_path,
-            num_samples=self.num_samples_after,
-        )
+        for data_dir in self.configs.schema_dict.values():
+            check_num_samples_in_dir(
+                dir_path=data_dir,
+                num_samples=self.num_samples_after,
+            )
 
-    def get_num_samples_change(self) -> int:
+    def print_num_samples_change(self):
         """
         Get number of samples lost.
         """
-        return abs(self.num_samples_after - self.num_samples_before)
+        self.configs.print_num_samples_change(
+            abs(self.num_samples_after - self.num_samples_before)
+        )
 
     def save_metadata(self, channel: str) -> None:
         """
@@ -162,7 +159,21 @@ class Executor(Processor):
         self.dataset.to_parquet(metadata_path)
         enable_progress_bar()
 
-    def upload_metadata_to_hub(
+    def upload_to_hub(self, channel: str) -> None:
+        """
+        Upload to hub.
+        :param channel:     Channel name.
+        """
+        if self.configs.upload_to_hub:
+            print("Uploading to hub...")
+            self.__upload_metadata_to_hub(channel=channel)
+            for schema, data_dir in self.configs.schema_dict.items():
+                self.__zip_and_upload_dir(
+                    dir_path=data_dir,
+                    path_in_repo=os.path.join(schema, channel + ".zip"),
+                )
+
+    def __upload_metadata_to_hub(
         self, channel: str,
         overwrite: bool = True,
     ) -> None:
@@ -173,12 +184,12 @@ class Executor(Processor):
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
         self.uploader.upload_file(
             file_path=metadata_path,
-            repo_id=self.dest_repo_id,
+            repo_id=self.configs.dest_repo_id,
             path_in_repo=os.path.join("metadata", channel + ".parquet"),
             overwrite=overwrite,
         )
 
-    def zip_and_upload_dir(
+    def __zip_and_upload_dir(
         self, dir_path: str,
         path_in_repo: str,
         overwrite: bool = True,
@@ -190,7 +201,7 @@ class Executor(Processor):
         """
         self.uploader.zip_and_upload_dir(
             dir_path=dir_path,
-            repo_id=self.dest_repo_id,
+            repo_id=self.configs.dest_repo_id,
             path_in_repo=path_in_repo,
             overwrite=overwrite,
         )
@@ -199,5 +210,7 @@ class Executor(Processor):
         """
         Clean cache.
         """
-        if os.path.exists(self.cache_dir):
-            shutil.rmtree(self.cache_dir)
+        if self.configs.clean_up:
+            print("Cleaning up...")
+            if os.path.exists(self.cache_dir):
+                shutil.rmtree(self.cache_dir)
