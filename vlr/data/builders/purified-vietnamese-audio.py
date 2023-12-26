@@ -20,6 +20,7 @@ _REPO_URL = "https://huggingface.co/{}/resolve/main"
 _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_MAIN_REPO_PATH) + "{channel}.parquet",
     "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
+    "transcript": f"{_REPO_URL}/transcript/".format(_MAIN_REPO_PATH) + "{channel}.zip",
 }
 _CONFIGS = [
     os.path.basename(file_name)[:-8]
@@ -29,7 +30,7 @@ _CONFIGS.append("all")
 
 
 class PurifiedVietnameseAudioConfig(datasets.BuilderConfig):
-    """Vietnamese Purified Audio configuration."""
+    """Purified Vietnamese Audio configuration."""
 
     def __init__(self, name, **kwargs):
         """
@@ -45,7 +46,7 @@ class PurifiedVietnameseAudioConfig(datasets.BuilderConfig):
 
 
 class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
-    """Vietnamese Purified Audio dataset."""
+    """Purified Vietnamese Audio dataset."""
 
     BUILDER_CONFIGS = [PurifiedVietnameseAudioConfig(name) for name in _CONFIGS]
     DEFAULT_CONFIG_NAME = "all"
@@ -56,6 +57,7 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
             "channel": datasets.Value("string"),
             "audio": datasets.Value("binary"),
             "sampling_rate": datasets.Value("int64"),
+            "transcript": datasets.Value("string"),
         })
 
         return datasets.DatasetInfo(
@@ -81,9 +83,16 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
         audio_dirs = dl_manager.download_and_extract(
             [_URLS["audio"].format(channel=channel) for channel in config_names]
         )
+        transcript_dirs = dl_manager.download_and_extract(
+            [_URLS["transcript"].format(channel=channel) for channel in config_names]
+        )
 
         audio_dict = {
             channel: audio_dir for channel, audio_dir in zip(config_names, audio_dirs)
+        }
+        transcript_dict = {
+            channel: transcript_dir
+            for channel, transcript_dir in zip(config_names, transcript_dirs)
         }
 
         return [
@@ -92,6 +101,7 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
                 gen_kwargs={
                     "metadata_paths": metadata_paths,
                     "audio_dict": audio_dict,
+                    "transcript_dict": transcript_dict,
                 },
             ),
         ]
@@ -99,11 +109,13 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
     def _generate_examples(
         self, metadata_paths: list[str],
         audio_dict: dict,
+        transcript_dict: dict,
     ) -> tuple[int, dict]:
         """
         Generate examples from metadata.
         :param metadata_paths:      Paths to metadata.
         :param audio_dict:          Paths to directory containing audios.
+        :param transcript_dict:     Paths to directory containing transcripts.
         :yield:                     Example.
         """
         dataset = datasets.load_dataset(
@@ -116,12 +128,16 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
             audio_path = os.path.join(
                 audio_dict[channel], channel, sample["id"] + ".wav"
             )
+            transcript_path = os.path.join(
+                transcript_dict[channel], channel, sample["id"] + ".txt"
+            )
 
             yield i, {
                 "id": sample["id"],
                 "channel": channel,
                 "audio": self.__get_binary_data(audio_path),
                 "sampling_rate": sample["sampling_rate"],
+                "transcript": self.__get_text_data(transcript_path),
             }
 
     def __get_binary_data(self, path: str) -> bytes:
@@ -132,3 +148,12 @@ class PurifiedVietnameseAudio(datasets.GeneratorBasedBuilder):
         """
         with open(path, "rb") as f:
             return f.read()
+
+    def __get_text_data(self, path: str) -> str:
+        """
+        Get transcript from path.
+        :param path:     Path to transcript.
+        :return:         Transcript.
+        """
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()

@@ -22,7 +22,7 @@ _URLS = {
     "meta": f"{_REPO_URL}/metadata/".format(_META_REPO_PATH) + "{channel}.parquet",
     "visual": f"{_REPO_URL}/visual/".format(_VISUAL_REPO_PATH) + "{channel}.zip",
     "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
-    "transcript": f"{_REPO_URL}/transcripts/".format(_META_REPO_PATH) + "{channel}.zip",
+    "transcript": f"{_REPO_URL}/transcript/".format(_META_REPO_PATH) + "{channel}.zip",
 }
 _CONFIGS = [
     os.path.basename(file_name)[:-8]
@@ -175,7 +175,7 @@ class VLR(datasets.GeneratorBasedBuilder):
         """
         Get transcript from path.
         :param path:     Path to transcript.
-        :return:                    Transcript.
+        :return:         Transcript.
         """
         with open(path, "r", encoding="utf-8") as f:
             return f.read().strip()
