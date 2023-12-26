@@ -86,9 +86,8 @@ def get_task_config(args: argparse.Namespace) -> TaskConfig:
 
 def main(configs: TaskConfig) -> None:
     """
-    This function is used to slice video into segments,
-    then save audio and visual separately.
-    :param args:    Arguments from command line.
+    This function is used to process data.
+    :param configs:     Task configs.
     """
     print(f"Initialize executor for {configs.task} task...")
     executor = Executor(configs=configs)

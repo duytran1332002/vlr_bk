@@ -11,8 +11,6 @@ class Denoiser(Processor):
     This class is used to denoise audio array.
     """
     def __init__(self) -> None:
-        """
-        """
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = pretrained.dns64().to(self.device)
 

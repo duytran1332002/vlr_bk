@@ -14,14 +14,6 @@ class Transcriber(Processor):
     This class is used to transcribe audio into text.
     """
     def __init__(self) -> None:
-        """
-        :param model_path:          Path to model.
-        :param lm_gram_name:        Language model name.
-        :param denoised_dir:        Path to directory containing denoised sound files.
-        :param transcript_dir:      Path to directory containing transcripts.
-        :param device:              Device to use.
-        :param overwrite:           Overwrite existing files.
-        """
         # Load the model and the processor.
         repo_id = "nguyenvulebinh/wav2vec2-large-vi-vlsp2020"
         self.model = (
@@ -55,8 +47,11 @@ class Transcriber(Processor):
     ) -> dict:
         """
         Transcribe for a sample.
-        :param sample:          Audio sample.
-        :return:                Sample with path to transcript.
+        :param sample:                  Audio sample.
+        :param transcript_output_dir:   Path to directory containing transcript.
+        :param language_threshold:      Threshold to determine whether audio is Vietnamese.
+        :param beam_width:              Beam width.
+        :return:                        Sample with path to transcript.
         """
         transcript_output_path = os.path.join(transcript_output_dir, sample["id"][0] + ".txt")
         if not os.path.exists(transcript_output_path):
@@ -107,7 +102,7 @@ class Transcriber(Processor):
         :param audio_array:     audio array.
         :param sampling_rate:   sampling rate.
         :param beam_width:      beam width.
-        :return:                transcript(s).
+        :return:                transcript.
         """
         if self.device == "cuda":
             torch.cuda.empty_cache()

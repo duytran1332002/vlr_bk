@@ -25,7 +25,7 @@ class Cropper(Processor):
     ) -> dict:
         """
         Crop mouth region in video.
-        :param batch:               Sample.
+        :param sample:              Sample.
         :param visual_output_dir:   Path to directory containing cropped mouth region.
         :param padding:             Padding.
         :return:                    Sample with path to video of cropped mouth region.
@@ -92,9 +92,9 @@ class Cropper(Processor):
     def crop_mouth(self, frame: np.ndarray, padding: int) -> np.ndarray:
         """
         Crop mouth region in frame.
-        :param frame:   Frame.
-        :param padding: Padding.
-        :return:        Mouth region.
+        :param frame:       Frame.
+        :param padding:     Padding.
+        :return:            Mouth region.
         """
         face_landmarks = self.landmark_detector.process(frame).multi_face_landmarks
 

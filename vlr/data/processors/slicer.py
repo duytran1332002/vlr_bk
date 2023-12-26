@@ -4,6 +4,9 @@ from .processor import Processor
 
 
 class Slicer(Processor):
+    """
+    This processor is used to slice video into segments and save them into audio and visual.
+    """
     def process(
         self, sample: dict,
         visual_output_dir: str,
@@ -15,8 +18,14 @@ class Slicer(Processor):
     ) -> dict:
         """
         Split video into audio and visual.
-        :param batch:           Batch with path to video file.
-        :return:                Samples with paths to audio and visual.
+        :param sample:              Sample.
+        :param visual_output_dir:   Path to visual output directory.
+        :param audio_output_dir:    Path to audio output directory.
+        :param fps:                 FPS of output video.
+        :param clip_duration:       Duration of each clip.
+        :param clip_overlap:        Overlap between clips.
+        :param keep_last:           Keep last clip if it is longer than half of clip duration.
+        :return:                    Samples with paths to audio and visual.
         """
         segment_ids = []
         with mp.VideoFileClip(sample["video"][0]) as video:
@@ -72,9 +81,12 @@ class Slicer(Processor):
     ) -> str:
         """
         Separate video into audio and visual.
-        :param segment:         Video segment.
-        :param visual_path:     Path to visual file.
-        :param audio_path:      Path to audio file.
+        :param id:              Sample id.
+        :param video:           Video.
+        :param start:           Start time.
+        :param end:             End time.
+        :param visual_dir:      Path to visual output directory.
+        :param audio_dir:       Path to audio output directory.
         """
         segment_id = f"{id}-{int(start)}-{int(end)}"
         segment = video.subclip(start, end)
@@ -96,10 +108,10 @@ class Slicer(Processor):
         visual_dir: str,
     ) -> None:
         """
-        Separate video into audio and visual.
+        Save video segment.
         :param segment:         Video segment.
-        :param visual_path:     Path to visual file.
-        :param audio_path:      Path to audio file.
+        :param segment_id:      Segment id.
+        :param visual_dir:      Path to visual output directory.
         """
         visual_path = os.path.join(visual_dir, f"{segment_id}.mp4")
         if not os.path.exists(visual_path):
@@ -115,10 +127,10 @@ class Slicer(Processor):
         audio_dir: str,
     ) -> None:
         """
-        Separate video into audio and visual.
+        Save audio segment.
         :param segment:         Video segment.
-        :param visual_path:     Path to visual file.
-        :param audio_path:      Path to audio file.
+        :param segment_id:      Segment id.
+        :param audio_dir:       Path to audio output directory.
         """
         audio_path = os.path.join(audio_dir, f"{segment_id}.wav")
         if not os.path.exists(audio_path):

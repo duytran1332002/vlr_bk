@@ -24,11 +24,7 @@ class Executor(Processor):
 
     def __init__(self, configs: TaskConfig) -> None:
         """
-        :param processor_name:                  Name of processor.
-        :param src_repo_id:                     Source repository id.
-        :param dest_repo_id:                    Destination repository id.
-        :param output_dir:                      Output directory.
-        :param overwrite:                       Whether to overwrite existing channels.
+        :param configs:     Task configs.
         """
         self.configs = configs
         self.processor: Processor = self.PROCESSORS[self.configs.task]()
@@ -44,9 +40,7 @@ class Executor(Processor):
     def __load_channels(self) -> list:
         """
         Load channels to process.
-        :param channel_names_to_process_path:   Path to file containing channel names
-                                                to process.
-        :return:                                Executor.
+        :return:    List of channels to process.
         """
         # Get available channel names.
         available_channels = set(get_dataset_config_names(self.configs.src_repo_id)) - {"all"}
@@ -73,9 +67,7 @@ class Executor(Processor):
             channel=channel, overwrite=self.configs.overwrite
         )
 
-    def load_dataset(
-        self, channel: str,
-    ) -> Processor:
+    def load_dataset(self, channel: str) -> Processor:
         """
         Load dataset.
         :param channel:     Channel name.
@@ -100,9 +92,6 @@ class Executor(Processor):
     def process(self) -> Processor:
         """
         Process sample.
-        :param fn_kwargs:           Keyword arguments for function.
-        :param num_proc:            Number of processes.
-        :param remove_columns:      Columns to remove.
         :return:                    Executor.
         """
         assert self.dataset is not None, "Dataset is not loaded yet."
@@ -129,7 +118,6 @@ class Executor(Processor):
     def check_num_samples_in_dir(self) -> None:
         """
         Check if number of samples in directory matches expected number of samples.
-        :param dir_path:    Path to directory.
         """
         assert self.dataset is not None, "Dataset is not loaded yet."
 
@@ -180,6 +168,7 @@ class Executor(Processor):
         """
         Upload metadata and channel names to hub.
         :param channel:     Channel name.
+        :param overwrite:   Whether to overwrite existing file.
         """
         metadata_path = os.path.join(self.metadata_dir, channel + ".parquet")
         self.uploader.upload_file(
@@ -198,6 +187,7 @@ class Executor(Processor):
         Zip directory and upload it to the hub.
         :param dir_path:        Path to directory.
         :param path_in_repo:    Path to directory in repository.
+        :param overwrite:       Whether to overwrite existing file.
         """
         self.uploader.zip_and_upload_dir(
             dir_path=dir_path,
