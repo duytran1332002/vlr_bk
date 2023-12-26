@@ -109,7 +109,7 @@ def main(args: argparse.Namespace):
 
         # Extract audio and visual.
         print("Extracting audio and visual from dataset...")
-        executor = executor.process_batch(
+        executor = executor.process(
             fn_kwargs={
                 "visual_output_dir": channel_visual_dir,
                 "audio_output_dir": channel_audio_dir,
@@ -118,7 +118,6 @@ def main(args: argparse.Namespace):
                 "clip_overlap": 1.0,
                 "keep_last": True,
             },
-            batch_size=args.batch_size,
             num_proc=args.num_proc,
             remove_columns=["video"],
         )

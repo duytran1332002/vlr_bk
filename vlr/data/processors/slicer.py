@@ -4,8 +4,8 @@ from .processor import Processor
 
 
 class Slicer(Processor):
-    def process_batch(
-        self, batch: dict,
+    def process(
+        self, sample: dict,
         visual_output_dir: str,
         audio_output_dir: str,
         fps: int = 25,
@@ -19,7 +19,7 @@ class Slicer(Processor):
         :return:                Samples with paths to audio and visual.
         """
         segment_ids = []
-        with mp.VideoFileClip(batch["video"][0]) as video:
+        with mp.VideoFileClip(sample["video"][0]) as video:
             duration = video.duration
             sampling_rate = int(video.audio.fps)
 
@@ -30,7 +30,7 @@ class Slicer(Processor):
                 end = clip_duration
                 while end <= duration:
                     segment_id = self.save_visual_and_audio_clip(
-                        id=batch["id"][0],
+                        id=sample["id"][0],
                         video=video,
                         start=start,
                         end=end,
@@ -43,7 +43,7 @@ class Slicer(Processor):
                     end = start + clip_duration
                 if keep_last and int(duration - start) >= 0.5 * clip_duration:
                     segment_id = self.save_visual_and_audio_clip(
-                        id=batch["id"][0],
+                        id=sample["id"][0],
                         video=video,
                         start=duration - clip_duration,
                         end=duration,
@@ -56,7 +56,7 @@ class Slicer(Processor):
 
         return {
             "id": segment_ids,
-            "channel": batch["channel"] * len(segment_ids),
+            "channel": sample["channel"] * len(segment_ids),
             "duration": [clip_duration] * len(segment_ids),
             "fps": [fps] * len(segment_ids),
             "sampling_rate": [sampling_rate] * len(segment_ids),
