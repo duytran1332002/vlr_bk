@@ -18,31 +18,19 @@ class Slicer(Processor):
         :param batch:           Batch with path to video file.
         :return:                Samples with paths to audio and visual.
         """
-        new_batch = {
-            "id": [],
-            "channel": [],
-            "duration": [],
-            "fps": [],
-            "sampling_rate": [],
-        }
+        segment_ids = []
+        with mp.VideoFileClip(batch["video"][0]) as video:
+            duration = video.duration
+            sampling_rate = int(video.audio.fps)
 
-        for (id, channel, video_path) in zip(batch["id"], batch["channel"], batch["video"]):
-            segment_ids = []
-            with mp.VideoFileClip(video_path) as video:
-                duration = video.duration
-
-                if duration < clip_duration:
-                    continue
-
+            if duration >= clip_duration:
                 video = video.set_fps(fps)
-                sampling_rate = int(video.audio.fps)
-
                 # Split video into segments.
                 start = 0
                 end = clip_duration
                 while end <= duration:
                     segment_id = self.save_visual_and_audio_clip(
-                        id=id,
+                        id=batch["id"][0],
                         video=video,
                         start=start,
                         end=end,
@@ -53,10 +41,9 @@ class Slicer(Processor):
 
                     start += clip_duration - clip_overlap
                     end = start + clip_duration
-
                 if keep_last and int(duration - start) >= 0.5 * clip_duration:
                     segment_id = self.save_visual_and_audio_clip(
-                        id=id,
+                        id=batch["id"][0],
                         video=video,
                         start=duration - clip_duration,
                         end=duration,
@@ -64,13 +51,16 @@ class Slicer(Processor):
                         audio_dir=audio_output_dir,
                     )
                     segment_ids.append(segment_id)
+            else:
+                segment_ids.append(None)
 
-                new_batch["id"].extend(segment_ids)
-                new_batch["channel"].extend([channel] * len(segment_ids))
-                new_batch["duration"].extend([clip_duration] * len(segment_ids))
-                new_batch["fps"].extend([fps] * len(segment_ids))
-                new_batch["sampling_rate"].extend([sampling_rate] * len(segment_ids))
-        return new_batch
+        return {
+            "id": segment_ids,
+            "channel": batch["channel"] * len(segment_ids),
+            "duration": [clip_duration] * len(segment_ids),
+            "fps": [fps] * len(segment_ids),
+            "sampling_rate": [sampling_rate] * len(segment_ids),
+        }
 
     def save_visual_and_audio_clip(
         self, id: str,
