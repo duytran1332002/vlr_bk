@@ -15,7 +15,7 @@ class Transcriber(Processor):
     """
     def __init__(self) -> None:
         # Load the model and the processor.
-        repo_id = "nguyenvulebinh/wav2vec2-large-vi-vlsp2020"
+        repo_id = "nguyenvulebinh/wav2vec2-base-vi-vlsp2020"
         self.model = (
             SourceFileLoader(
                 "model", hf_hub_download(
