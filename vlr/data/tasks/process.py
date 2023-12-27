@@ -53,10 +53,16 @@ def parse_args() -> argparse.Namespace:
         help="Upload to hub after processing.",
     )
     parser.add_argument(
-        "--clean-up",
+        "--clean-input",
         action=argparse.BooleanOptionalAction,
         default=False,
-        help="Clean up all downloaded files after processing.",
+        help="Remove all downloaded input files after processing.",
+    )
+    parser.add_argument(
+        "--clean-output",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Remove all output files except for metadata after processing.",
     )
     return parser.parse_args()
 
@@ -78,7 +84,8 @@ def get_task_config(args: argparse.Namespace) -> TaskConfig:
         channel_names_path=args.channel_names_path,
         overwrite=args.overwrite,
         upload_to_hub=args.upload_to_hub,
-        clean_up=args.clean_up,
+        clean_input=args.clean_input,
+        clean_output=args.clean_output,
         version=args.version,
     )
     return task_config
@@ -125,9 +132,12 @@ def main(configs: TaskConfig) -> None:
         # Upload to hub.
         executor.upload_to_hub(channel)
 
+        # Clean output.
+        executor.clean_output()
         print("-" * (13 + len(channel) + 2 * 20))
 
-    executor.clean_cache()
+    # Clean input.
+    executor.clean_input()
 
 
 if __name__ == "__main__":
