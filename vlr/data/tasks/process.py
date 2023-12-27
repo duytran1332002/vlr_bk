@@ -116,6 +116,7 @@ def main(configs: TaskConfig) -> None:
         print("Checking number of samples...")
         executor.check_num_samples_in_dir()
         executor.print_num_samples_change()
+        executor.print_num_output_samples()
 
         # Save metadata.
         print("Saving metada...")

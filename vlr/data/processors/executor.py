@@ -135,6 +135,12 @@ class Executor(Processor):
             abs(self.num_samples_after - self.num_samples_before)
         )
 
+    def print_num_output_samples(self) -> None:
+        """
+        Print number of output samples.
+        """
+        print(f"\tNumber of output samples: {self.num_samples_after}")
+
     def save_metadata(self, channel: str) -> None:
         """
         Save metadata as parquet file and save channel name to file.
