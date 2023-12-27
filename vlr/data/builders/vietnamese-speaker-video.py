@@ -17,11 +17,11 @@ _HOMEPAGE = "https://github.com/duytran1332002/vlr"
 _REPO_PATH = "datasets/fptu/vietnamese-speaker-video"
 _REPO_URL = f"https://huggingface.co/{_REPO_PATH}/resolve/main"
 _URLS = {
-    "meta": f"{_REPO_URL}/metadata/" + "{channel}.json",
+    "meta": f"{_REPO_URL}/metadata/" + "{channel}.parquet",
     "video": f"{_REPO_URL}/video/" + "{channel}.zip",
 }
 _CONFIGS = [
-    os.path.basename(file_name)[:-5]
+    os.path.basename(file_name)[:-8]
     for file_name in HfFileSystem().listdir(_REPO_PATH + "/metadata", detail=False)
 ]
 _CONFIGS.append("all")
@@ -106,7 +106,7 @@ class VietnameseSpeakerVideo(datasets.GeneratorBasedBuilder):
         :yield:                     Example.
         """
         dataset = datasets.load_dataset(
-            "json",
+            "parquet",
             data_files=metadata_paths,
             split="train",
         )
