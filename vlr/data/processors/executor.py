@@ -202,11 +202,20 @@ class Executor(Processor):
             overwrite=overwrite,
         )
 
-    def clean_cache(self) -> None:
+    def clean_output(self) -> None:
         """
-        Clean cache.
+        Remove all output files except for metadata after processing.
         """
-        if self.configs.clean_up:
-            print("Cleaning up...")
+        if self.configs.clean_output:
+            print("Cleaning up output...")
+            for data_dir in self.configs.schema_dict.values():
+                shutil.rmtree(data_dir)
+
+    def clean_input(self) -> None:
+        """
+        Remove all downloaded input files after processing.
+        """
+        if self.configs.clean_input:
+            print("Cleaning up input...")
             if os.path.exists(self.cache_dir):
                 shutil.rmtree(self.cache_dir)

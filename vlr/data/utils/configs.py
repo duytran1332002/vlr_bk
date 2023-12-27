@@ -12,7 +12,8 @@ class TaskConfig:
     channel_names_path: str = None
     overwrite: bool = False
     upload_to_hub: bool = False
-    clean_up: bool = False
+    clean_input: bool = False
+    clean_output: bool = False
     version: int = 1
 
     task: str = None
