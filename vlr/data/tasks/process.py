@@ -108,7 +108,6 @@ def main(configs: TaskConfig) -> None:
         print("-" * 20 + f" Processing {channel} " + "-" * 20)
 
         # Prepare save directory.
-        print("Preparing save directory...")
         executor.prepare_dir(channel=channel)
 
         # Get dataset.
@@ -118,6 +117,7 @@ def main(configs: TaskConfig) -> None:
         # Extract audio and visual.
         print("Processing data...")
         executor = executor.process()
+        print()
 
         # Check number of samples.
         print("Checking number of samples...")
@@ -132,8 +132,6 @@ def main(configs: TaskConfig) -> None:
         # Upload to hub.
         executor.upload_to_hub(channel)
 
-        # Clean output.
-        executor.clean_output()
         print("-" * (13 + len(channel) + 2 * 20))
 
     # Clean input.

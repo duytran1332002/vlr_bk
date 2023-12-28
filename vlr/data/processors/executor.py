@@ -166,11 +166,9 @@ class Executor(Processor):
                     dir_path=data_dir,
                     path_in_repo=os.path.join(schema, channel + ".zip"),
                 )
+            print()
 
-    def __upload_metadata_to_hub(
-        self, channel: str,
-        overwrite: bool = True,
-    ) -> None:
+    def __upload_metadata_to_hub(self, channel: str) -> None:
         """
         Upload metadata and channel names to hub.
         :param channel:     Channel name.
@@ -181,13 +179,11 @@ class Executor(Processor):
             file_path=metadata_path,
             repo_id=self.configs.dest_repo_id,
             path_in_repo=os.path.join("metadata", channel + ".parquet"),
-            overwrite=overwrite,
         )
 
     def __zip_and_upload_dir(
         self, dir_path: str,
         path_in_repo: str,
-        overwrite: bool = True,
     ) -> None:
         """
         Zip directory and upload it to the hub.
@@ -199,23 +195,13 @@ class Executor(Processor):
             dir_path=dir_path,
             repo_id=self.configs.dest_repo_id,
             path_in_repo=path_in_repo,
-            overwrite=overwrite,
         )
-
-    def clean_output(self) -> None:
-        """
-        Remove all output files except for metadata after processing.
-        """
-        if self.configs.clean_output:
-            print("Cleaning up output...")
-            for data_dir in self.configs.schema_dict.values():
-                shutil.rmtree(data_dir)
+        if self.configs.clean_output and os.path.exists(dir_path):
+            shutil.rmtree(dir_path)
 
     def clean_input(self) -> None:
         """
         Remove all downloaded input files after processing.
         """
-        if self.configs.clean_input:
-            print("Cleaning up input...")
-            if os.path.exists(self.cache_dir):
-                shutil.rmtree(self.cache_dir)
+        if self.configs.clean_input and os.path.exists(self.cache_dir):
+            shutil.rmtree(self.cache_dir)
