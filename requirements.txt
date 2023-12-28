@@ -9,7 +9,6 @@ moviepy==1.0.3
 denoiser==0.1.5
 mediapipe==0.10.5
 opencv-python==4.8.1.78
-soundfile== 0.12.1
 polars==0.19.7
 tqdm==4.66.1
 pytorch-lightning==2.1.0
