@@ -55,6 +55,7 @@ class VietnameseSpeakerVideo(datasets.GeneratorBasedBuilder):
             "channel": datasets.Value("string"),
             "video": datasets.Value("string"),
             "fps": datasets.Value("int8"),
+            "sampling_rate": datasets.Value("int64"),
         })
 
         return datasets.DatasetInfo(
@@ -121,4 +122,5 @@ class VietnameseSpeakerVideo(datasets.GeneratorBasedBuilder):
                 "channel": channel,
                 "video": video_path,
                 "fps": sample["fps"],
+                "sampling_rate": sample["sampling_rate"],
             }
