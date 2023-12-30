@@ -1,23 +1,50 @@
-# Data Structure
+# Data Structure on HuggingFace
 ```
-fptu/vlr
-|--- README.md
-|--- active_speaker
-|--- raw
-|--- v1
-     |--- stage_1
-          |--- slicing
-          |--- visual
-          |--- audio
-     |--- stage_2
-          |--- denoising
-          |--- denoised
-     |--- stage_3
-          |--- transcribing
-          |--- transcripts
-     |--- stage_4
-          |--- cropping
-          |--- mouths
+fptu
+|--- vietnamese-video
+     |--- metadata
+          |--- channel.parquet
+     |--- vietnamese-video.py
+|--- vietnamese-speaker-video
+     |--- metadata
+          |--- channel.parquet
+     |--- video
+          |--- channel
+               |--- id.mp4
+     |--- vietnamese-speaker-video.py
+|--- vietnamese-speaker-clip
+     |--- metadata
+          |--- channel.parquet
+     |--- audio
+          |--- channel
+               |--- id.wav
+     |--- visual
+          |--- channel
+               |--- id.mp4
+     |--- vietnamese-speaker-clip.py
+|--- vietnamese-speaker-lip-clip
+     |--- metadata
+          |--- channel.parquet
+     |--- visual
+          |--- channel
+               |--- id.mp4
+     |--- vietnamese-speaker-lip-clip.py
+|--- denoised-vietnamese-audio
+     |--- metadata
+          |--- channel.parquet
+     |--- audio
+          |--- channel
+               |--- id.wav
+     |--- denoised-vietnamese-audio.py
+|--- purified-vietnamese-audio
+     |--- metadata
+          |--- channel.parquet
+     |--- transcript
+          |--- channel
+               |--- id.txt
+     |--- purified-vietnamese-audio.py
+|--- vlr
+     |--- vlr.py
 ```
 
 # Download Video From Tiktok
@@ -44,81 +71,51 @@ python donwload_tiktok_videos.py
 ```
 # Extract Active Speaker
 
-# Slice video
+# Process data
+There are totally 4 steps in this process, and everything has been made to be automatic. In order to start processing, simply modified the following commang according to each task.
+```bash
+python vlr/data/tasks/process.py \
+     --task task \
+     --output-dir path/to/your/output/directory \
+     --channel-names-path /path/to/channel/list.txt \
+     --overwrite \
+     --upload-to-hub \
+     --clean-input \
+     --clean-output \
+```
+* `--task`: Choose 1 in 4 options which are `slice`, `crop`, `denoise`, `transcribe`.
+* `--output-dir`: Path to directory that will contain the output data.
+* `--channel-names-path`: Path to the text file that contains channel names you want to process. These names have to be separate by `\n` in the text file.
+* `--overwrite`: Include this option if you want to overwrite output data available in the output directory.
+* `--upload-to-hub`: Include this option if you want to upload the output data to HuggingFace after processing.
+* `--clean-input`: Include this option if you want to remove all downloaded files used to process data.
+* `--clean-output`: Include this option if you want to remove all output files after processing.
+
+The following setions will present details of what each task does. It must be noticed that these tasks must follow the given order so as to guarantee no conflicts will happen.
+
+## 1. Slice video
 What this task do:
 * Set fps of video to 25
 * Cut video into smaller segment of 3s and overlap 1s
 * Split audio and muted video from the original video
 
-How to use:
-1. Follow instructions in the `slice.py` file to modify the code
-2. Run the command below to start slicing
-```
-python vlr/data/task/slice.py
-```
+## 2. Crop mouth region
+What this task do:
+* Crop mouth region in muted videos based on facial landmarks
+* Remove records that mouth regions can not be extracted from
 
-# Denoise audio
+## 2. Denoise audio
 What this task do:
 * Denoise audio files
 
-How to use:
-1. Follow instructions in the `denoise.py` file to modify the code
-2. Run the command below to start denoising
-```
-python vlr/data/task/denoise.py
-```
-
-# Transcribe audio
+## 3. Transcribe audio
 What this task do:
+* Classify if an audio is Vietnamese. Then, remove the audio if the confidence is less than 99%
 * Transcribe audio
-* Remove records that can not be transcribe
+* Remove records that can not be transcribe or contains gibberish
 
-How to use:
-1. Follow instructions in the `transcribe.py` file to modify the code
-2. Run the command below to start transcribing
-```
-python vlr/data/task/transcribe.py
-```
-
-# Crop mouth region
-What this task do:
-* Crop mouth region in muted videos
-* Remove records that mouth regions can not be extracted from
-
-How to use:
-1. Follow instructions in the `crop.py` file to modify the code
-2. Run the command below to start cropping
-```
-python vlr/data/task/crop.py
-```
-
-# Run 4 tasks above
-To run 4 tasks in a row, use this command
-```
-bash vlr/scripts/full_process.sh
-```
-
-# Do statistics
+## Do statistics
 What this task do:
 * Count total duration
 * Count number of vocabularies
 * Count number of words
-
-How to use:
-1. Follow instructions in the `statistics.py` file to modify the code
-2. Run the command below to start doing statistics
-```
-python vlr/data/task/statistics.py
-```
-
-# Push to HuggingFace
-What this task do:
-* Zip audio, denoised audio, muted video, transcript, mouth-cropped video directories of channels
-* Push these zipped files to HuggingFace
-
-How to use:
-1. Follow instructions in the `push.py` file to modify the code
-2. Run the command below and provide `HuggingFace access token` to start pushing to HuggingFace
-```
-python vlr/data/task/push.py --token <access-token>
-```
