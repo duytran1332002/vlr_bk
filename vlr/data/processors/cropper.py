@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 import mediapipe as mp
+import moviepy.editor as mpe
 from vlr.data.processors.processor import Processor
 
 
@@ -11,8 +12,6 @@ class Cropper(Processor):
     """
     def __init__(self) -> None:
         self.landmark_detector = mp.solutions.face_mesh.FaceMesh()
-        self.fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-
         self.mouth_landmark_idxes = [
             61, 185, 40, 39, 37, 0, 267, 269, 270, 409,
             291, 146, 91, 181, 84, 17, 314, 405, 321, 375,
@@ -33,10 +32,9 @@ class Cropper(Processor):
         visual_output_path = os.path.join(visual_output_dir, sample["id"][0] + ".mp4")
 
         if not os.path.exists(visual_output_path):
-            cap = cv2.VideoCapture(sample["visual"][0])
             mouths = []
             max_width, max_height = 0, 0
-            for frame in self.get_frames(cap):
+            for frame in mpe.VideoFileClip(sample["visual"][0]).iter_frames():
                 mouth = self.crop_mouth(frame, padding)
                 if mouth is None or mouth.shape[0] == 0 or mouth.shape[1] == 0:
                     continue
@@ -58,7 +56,6 @@ class Cropper(Processor):
                 )
             else:
                 sample["id"][0] = None
-            cap.release()
 
         return sample
 
@@ -77,17 +74,6 @@ class Cropper(Processor):
         if abs(num_cropped / sample_fps - sample_duration) > 0.1:
             return False
         return True
-
-    def get_frames(self, cap: cv2.VideoCapture) -> np.ndarray:
-        """
-        Get frames from sample.
-        :param cap:     Video capture.
-        """
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            yield frame
 
     def crop_mouth(self, frame: np.ndarray, padding: int) -> np.ndarray:
         """
@@ -129,10 +115,11 @@ class Cropper(Processor):
         :param frame_height:    Frame height.
         :param fps:             FPS.
         """
-        video_writer = cv2.VideoWriter(
-            video_path, self.fourcc, fps, (frame_width, frame_height)
+        mpe.VideoFileClip.write_videofile(
+            mpe.ImageSequenceClip(
+                [cv2.resize(frame, (frame_width, frame_height)) for frame in frames],
+                fps=fps,
+            ),
+            video_path,
+            logger=None,
         )
-        for mouth in frames:
-            mouth = cv2.resize(mouth, (frame_width, frame_height))
-            video_writer.write(mouth)
-        video_writer.release()
