@@ -24,6 +24,7 @@ _URLS = {
 _CONFIGS = [
     os.path.basename(file_name)[:-8]
     for file_name in HfFileSystem().listdir(_REPO_PATH + "/metadata", detail=False)
+    if file_name.endswith(".parquet")
 ]
 _CONFIGS.append("all")
 
