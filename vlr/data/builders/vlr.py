@@ -66,7 +66,7 @@ class VLR(datasets.GeneratorBasedBuilder):
         })
 
         return datasets.DatasetInfo(
-            description=_DESCRIPTION[self.config.name],
+            description=_DESCRIPTION,
             features=features,
             homepage=_HOMEPAGE,
             citation=_CITATION,
@@ -86,9 +86,8 @@ class VLR(datasets.GeneratorBasedBuilder):
             [_URLS["meta"].format(channel=channel) for channel in config_names]
         )
         visual_dirs = dl_manager.download_and_extract(
-            [_URLS["video"].format(channel=channel) for channel in config_names]
+            [_URLS["visual"].format(channel=channel) for channel in config_names]
         )
-
         audio_dirs = dl_manager.download_and_extract(
             [_URLS["audio"].format(channel=channel) for channel in config_names]
         )
