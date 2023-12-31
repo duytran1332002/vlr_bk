@@ -51,7 +51,8 @@ class Executor(Processor):
             with open(self.configs.channel_names_path, "r") as f:
                 new_channels = set(f.read().split())
 
-        available_channels = available_channels.intersection(new_channels)
+        if new_channels:
+            available_channels = available_channels.intersection(new_channels)
         if not self.configs.overwrite and not self.configs.upload_to_hub:
             existing_channels = set(get_dataset_config_names(self.configs.dest_repo_id)) - {"all"}
             available_channels -= existing_channels
