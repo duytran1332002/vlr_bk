@@ -3,11 +3,14 @@ import sys
 
 sys.path.append(os.getcwd())
 
+import time
+import errno
 import argparse
 from tqdm import tqdm
 from vlr.data.processors import Executor
 from vlr.data.utils import TaskConfig, SlicingTaskConfig, DenoisingTaskConfig
 from vlr.data.utils import CroppingTaskConfig, TranscribingTaskConfig
+from huggingface_hub.utils import HfHubHTTPError
 
 
 def parse_args() -> argparse.Namespace:
@@ -134,9 +137,33 @@ def main(configs: TaskConfig) -> None:
 
         print("-" * (13 + len(channel) + 2 * 20))
 
-    # Clean input.
-    executor.clean_input()
-
 
 if __name__ == "__main__":
-    main(configs=get_task_config(args=parse_args()))
+    counter = 3
+    wait_time = 60
+    while counter > 0:
+        try:
+            main(configs=get_task_config(args=parse_args()))
+            break
+        except KeyboardInterrupt:
+            print("\nStop executing due to keyboard interruption.")
+            break
+        except HfHubHTTPError as hf_conn_error:
+            print("\n" + "-" * 50)
+            print(f"\nError while executing: {hf_conn_error}.")
+            print("Please check your connection.")
+            print(f"Automatically retry in {wait_time}s.")
+            print(f"Number of trials left: {counter - 1}.\n")
+            print("-" * 50 + "\n")
+            time.sleep(wait_time)
+            counter -= 1
+        except OSError as os_error:
+            print("\n" + "-" * 50)
+            print(f"\nError while executing: {os_error}.")
+            if os_error.errno == errno.ENOSPC:
+                print("Please check storage.")
+            print(f"Automatically retry in {wait_time}s.")
+            print(f"Number of trials left: {counter - 1}.\n")
+            print("-" * 50 + "\n")
+            time.sleep(wait_time)
+            counter -= 1
