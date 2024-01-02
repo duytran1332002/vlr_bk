@@ -77,7 +77,7 @@ There are totally 4 steps in this process, and everything has been made to be au
 python vlr/data/tasks/process.py \
      --task task \
      --output-dir path/to/your/output/directory \
-     --channel-names-path /path/to/channel/list.txt \
+     --channel-names /path/to/channel/list.txt \
      --overwrite \
      --upload-to-hub \
      --clean-input \
@@ -85,7 +85,7 @@ python vlr/data/tasks/process.py \
 ```
 * `--task`: Choose 1 in 4 options which are `slice`, `crop`, `denoise`, `transcribe`.
 * `--output-dir`: Path to directory that will contain the output data.
-* `--channel-names-path`: Path to the text file that contains channel names you want to process. These names have to be separate by `\n` in the text file.
+* `--channel-names`: Path to the text file that contains channel names you want to process. These names have to be separate by `\n` in the text file.
 * `--overwrite`: Include this option if you want to overwrite output data available in the output directory.
 * `--upload-to-hub`: Include this option if you want to upload the output data to HuggingFace after processing.
 * `--clean-input`: Include this option if you want to remove all downloaded files used to process data.
