@@ -29,10 +29,10 @@ def parse_args() -> argparse.Namespace:
         help="Path to data directory.",
     )
     parser.add_argument(
-        "--channel-names-path",
+        "--channel-names",
         type=str,
         default=None,
-        help="Path to file containing channel names.",
+        help="A channel name or path to file containing channel names.",
     )
     parser.add_argument(
         "--version",
@@ -81,7 +81,7 @@ def get_task_config(args: argparse.Namespace) -> TaskConfig:
     }
     task_config = task_dict[args.task](
         output_dir=args.output_dir,
-        channel_names_path=args.channel_names_path,
+        channel_names=args.channel_names,
         overwrite=args.overwrite,
         upload_to_hub=args.upload_to_hub,
         clean_input=args.clean_input,
