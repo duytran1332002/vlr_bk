@@ -51,9 +51,12 @@ class Executor(Processor):
             available_channels -= existing_channels
 
         # Get channel names to process.
-        if self.configs.channel_names_path:
-            with open(self.configs.channel_names_path, "r") as f:
-                new_channels = set(f.read().split())
+        if self.configs.channel_names:
+            if os.path.isfile(self.configs.channel_names):
+                with open(self.configs.channel_names, "r") as f:
+                    new_channels = set(f.read().split())
+            else:
+                new_channels = {self.configs.channel_names}
             available_channels = available_channels.intersection(new_channels)
 
         return list(available_channels)

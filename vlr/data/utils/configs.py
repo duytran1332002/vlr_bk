@@ -9,7 +9,7 @@ class TaskConfig:
     This config is used to process data.
     """
     output_dir: str
-    channel_names_path: str = None
+    channel_names: str = None
     overwrite: bool = False
     upload_to_hub: bool = False
     clean_input: bool = False
