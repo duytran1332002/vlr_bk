@@ -169,6 +169,10 @@ class Executor(Processor):
                     dir_path=data_dir,
                     path_in_repo=os.path.join(schema, channel + ".zip"),
                 )
+                if self.configs.clean_output:
+                    shutil.rmtree(data_dir)
+                if self.configs.clean_input:
+                    shutil.rmtree(self.cache_dir)
             print()
 
     def __upload_metadata_to_hub(self, channel: str) -> None:
@@ -199,12 +203,10 @@ class Executor(Processor):
             repo_id=self.configs.dest_repo_id,
             path_in_repo=path_in_repo,
         )
-        if self.configs.clean_output and os.path.exists(dir_path):
-            shutil.rmtree(dir_path)
 
-    def clean_input(self) -> None:
-        """
-        Remove all downloaded input files after processing.
-        """
-        if self.configs.clean_input and os.path.exists(self.cache_dir):
-            shutil.rmtree(self.cache_dir)
+    def is_skipped(self, channel) -> bool:
+        if channel not in get_dataset_config_names(self.configs.dest_repo_id):
+            return False
+        if self.configs.overwrite:
+            return False
+        return True
