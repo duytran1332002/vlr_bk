@@ -102,18 +102,20 @@ def main(configs: TaskConfig) -> None:
     print(f"Initialize executor for {configs.task} task...")
     executor = Executor(configs=configs)
 
-    for channel in tqdm(
+    progress_bar = tqdm(
         executor.available_channels,
         desc="Processing channels",
         total=len(executor.available_channels),
         unit="channel"
-    ):
+    )
+    for channel in progress_bar:
         print("-" * 20 + f" Processing {channel} " + "-" * 20)
 
         if executor.is_skipped(channel):
             print("\nChannel existed on the hub.")
             print("To overwrite, please run again with --overwrite.\n")
             print("-" * (13 + len(channel) + 2 * 20))
+            progress_bar.update(1)
             continue
 
         # Prepare save directory.
