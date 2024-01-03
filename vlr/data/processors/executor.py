@@ -210,7 +210,7 @@ class Executor(Processor):
         path_in_hub = os.path.join(
             "datasets", self.configs.dest_repo_id, "metadata", f"{channel}.parquet"
         )
-        if fs.exists(path_in_hub):
+        if not fs.exists(path_in_hub):
             return False
         if self.configs.overwrite:
             return False
