@@ -166,7 +166,7 @@ class TranscribingTaskConfig(TaskConfig):
         """
         task_kwargs = super().get_task_kwargs()
         task_kwargs["fn_kwargs"].update({
-            "language_threshold": 0.99,
+            "language_threshold": 0.8,
             "beam_width": 500,
         })
         return task_kwargs

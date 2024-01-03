@@ -57,7 +57,7 @@ class Transcriber(Processor):
         if not os.path.exists(transcript_output_path):
             try:
                 audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
-                if self.language_classifier.is_vietnamese(
+                if not self.language_classifier.is_vietnamese(
                     audio_array=audio_array,
                     sampling_rate=sampling_rate,
                     threshold=language_threshold,
