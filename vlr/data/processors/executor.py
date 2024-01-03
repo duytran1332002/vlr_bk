@@ -8,6 +8,7 @@ from .transcriber import Transcriber
 from .uploader import Uploader
 from datasets import (Dataset, disable_progress_bar, enable_progress_bar,
                       get_dataset_config_names, load_dataset)
+from huggingface_hub import HfFileSystem
 from vlr.data.utils import TaskConfig, check_num_samples_in_dir, prepare_dir
 
 
@@ -205,7 +206,11 @@ class Executor(Processor):
         )
 
     def is_skipped(self, channel) -> bool:
-        if channel not in get_dataset_config_names(self.configs.dest_repo_id):
+        fs = HfFileSystem()
+        path_in_hub = os.path.join(
+            "datasets", self.configs.dest_repo_id, "metadata", f"{channel}.parquet"
+        )
+        if fs.exists(path_in_hub):
             return False
         if self.configs.overwrite:
             return False

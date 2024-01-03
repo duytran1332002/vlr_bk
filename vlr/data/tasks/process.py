@@ -114,6 +114,7 @@ def main(configs: TaskConfig) -> None:
             print("\nChannel existed on the hub.")
             print("To overwrite, please run again with --overwrite.\n")
             print("-" * (13 + len(channel) + 2 * 20))
+            continue
 
         # Prepare save directory.
         executor.prepare_dir(channel=channel)
