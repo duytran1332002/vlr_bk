@@ -5,6 +5,7 @@ sys.path.append(os.getcwd())
 
 import time
 import errno
+import shutil
 import argparse
 from tqdm import tqdm
 from vlr.data.processors import Executor
@@ -38,12 +39,6 @@ def parse_args() -> argparse.Namespace:
         help="A channel name or path to file containing channel names.",
     )
     parser.add_argument(
-        "--version",
-        type=int,
-        default=1,
-        help="version of the dataset.",
-    )
-    parser.add_argument(
         "--overwrite",
         action=argparse.BooleanOptionalAction,
         default=False,
@@ -67,10 +62,22 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Remove all output files except for metadata after processing.",
     )
+    parser.add_argument(
+        "--version",
+        type=int,
+        default=1,
+        help="version of the dataset.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=str,
+        default=os.path.join(os.getcwd(), ".cache"),
+        help="version of the dataset.",
+    )
     return parser.parse_args()
 
 
-def get_task_config(args: argparse.Namespace) -> TaskConfig:
+def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     """
     Get task config.
     :param args:    Arguments from command line.
@@ -82,7 +89,7 @@ def get_task_config(args: argparse.Namespace) -> TaskConfig:
         "denoise": DenoisingTaskConfig,
         "transcribe": TranscribingTaskConfig,
     }
-    task_config = task_dict[args.task](
+    task_configs = task_dict[args.task](
         output_dir=args.output_dir,
         channel_names=args.channel_names,
         overwrite=args.overwrite,
@@ -90,8 +97,9 @@ def get_task_config(args: argparse.Namespace) -> TaskConfig:
         clean_input=args.clean_input,
         clean_output=args.clean_output,
         version=args.version,
+        cache_dir=args.cache_dir,
     )
-    return task_config
+    return task_configs
 
 
 def main(configs: TaskConfig) -> None:
@@ -149,9 +157,10 @@ def main(configs: TaskConfig) -> None:
 if __name__ == "__main__":
     counter = 3
     wait_time = 60
+    task_configs = get_task_configs(parse_args())
     while counter > 0:
         try:
-            main(configs=get_task_config(args=parse_args()))
+            main(configs=task_configs)
             break
         except KeyboardInterrupt:
             print("\nStop executing due to keyboard interruption.")
@@ -175,3 +184,9 @@ if __name__ == "__main__":
             print("-" * 50 + "\n")
             time.sleep(wait_time)
             counter -= 1
+        except AssertionError as assertion_error:
+            print("\n" + "-" * 50)
+            print(f"\nError while executing: {assertion_error}.")
+            print("Automatically delete cache and try again.")
+            print("-" * 50 + "\n")
+            shutil.rmtree(task_configs.cache_dir)
