@@ -5,6 +5,7 @@ from huggingface_hub import HfFileSystem
 
 
 logger = datasets.logging.get_logger(__name__)
+fs = HfFileSystem()
 
 
 _CITATION = """
@@ -22,12 +23,13 @@ _URLS = {
     "visual": f"{_REPO_URL}/visual/".format(_MAIN_REPO_PATH) + "{channel}.zip",
     "audio": f"{_REPO_URL}/audio/".format(_AUDIO_REPO_PATH) + "{channel}.zip",
 }
-_CONFIGS = [
-    os.path.basename(file_name)[:-8]
-    for file_name in HfFileSystem().listdir(_MAIN_REPO_PATH + "/metadata", detail=False)
-    if file_name.endswith(".parquet")
-]
-_CONFIGS.append("all")
+_CONFIGS = ["all"]
+if fs.exists(_MAIN_REPO_PATH + "/metadata"):
+    _CONFIGS.extend([
+        os.path.basename(file_name)[:-8]
+        for file_name in fs.listdir(_MAIN_REPO_PATH + "/metadata", detail=False)
+        if file_name.endswith(".parquet")
+    ])
 
 
 class VietnameseSpeakerLipClipConfig(datasets.BuilderConfig):
@@ -78,7 +80,7 @@ class VietnameseSpeakerLipClip(datasets.GeneratorBasedBuilder):
         :param dl_manager:  Download manager.
         :return:            Splits.
         """
-        config_names = _CONFIGS[:-1] if self.config.name == "all" else [self.config.name]
+        config_names = _CONFIGS[1:] if self.config.name == "all" else [self.config.name]
 
         metadata_paths = dl_manager.download(
             [_URLS["meta"].format(channel=channel) for channel in config_names]
