@@ -15,6 +15,7 @@ class TaskConfig:
     clean_input: bool = False
     clean_output: bool = False
     version: int = 1
+    cache_dir: str = os.path.join(os.getcwd(), ".cache")
 
     task: str = None
     src_repo_id: str = None
