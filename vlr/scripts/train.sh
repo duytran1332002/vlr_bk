@@ -2,6 +2,7 @@ python vlr/train.py exp_dir=/home/duytran/Desktop/vlr/outputs \
                 exp_name="1st_v2.1_200h_visual_prerained"\
                 streaming=True \
                 data.modality=video \
+                data.from_=hf \
                 data.batch_size=7 \
                 data.num_workers=16 \
                 data.max_frames=750 \

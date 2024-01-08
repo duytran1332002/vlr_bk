@@ -2,6 +2,8 @@ defaults:
   - _self_
   - dataset: vlr
 modality: video
+from_: local
+hf_name: fptu/vlr
 use_audio_normalise: False
 num_workers: 16
 batch_size: 10

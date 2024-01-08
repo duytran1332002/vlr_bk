@@ -58,8 +58,12 @@ class DataModule(LightningDataModule):
         # read dataset
         # list all file with full path
         path = os.path.join(self.cfg.data.dataset.root_dir, self.cfg.data.dataset.train_dir)
-        self.dataset = load_dataset("json", data_files=[os.path.join(path, f) for f in os.listdir(path)])
-        if self.cfg.data.select != -1:
+        if self.cfg.data.from_ == "local":
+            self.dataset = load_dataset("json", data_files=[os.path.join(path, f) for f in os.listdir(path)])
+        elif self.cfg.data.from_ == "hf":
+            self.dataset = load_dataset(self.cfg.data.hf_name, "all", split="train", streaming=self.cfg.streaming)
+        
+        if self.cfg.data.select != -1 and not self.cfg.streaming:
             self.dataset["train"] = self.dataset["train"].select(range(self.cfg.data.select))
         # split dataset
         self.dataset = self.dataset["train"].train_test_split(test_size=self.cfg.data.dataset.test_size)
@@ -88,6 +92,7 @@ class DataModule(LightningDataModule):
                 modality=self.cfg.data.modality,
                 audio_transform=AudioTransform("train"),
                 video_transform=VideoTransform("train"),
+                from_=self.cfg.data.from_,
             )
             return self._dataloader(train_ds, collate_pad)
         else:
