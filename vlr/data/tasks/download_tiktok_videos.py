@@ -23,6 +23,8 @@ def args_parser():
     
     parser.add_argument('--channel_path',           type=str,
                         default=None,  help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+    parser.add_argument('--video_url',           type=str,
+                        default=None,  help='Path contain url to download video (txt file)')
     
     parser.add_argument('--save_path',           type=str,
                         default=None,  help='Path for saving channel')
@@ -139,7 +141,7 @@ if __name__ == "__main__":
         # read video list
         try:
             
-            with open(os.path.join(args.save_path, f"{user_id}.txt"), 'r') as f:
+            with open(os.path.join(args.video_url, f"{user_id}.txt"), 'r') as f:
                 lines = f.readlines()
             videos = [line.strip() for line in lines]
             num_download = 0

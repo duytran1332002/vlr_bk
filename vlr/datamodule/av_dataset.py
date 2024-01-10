@@ -206,7 +206,26 @@ class AVDatasetIterable(torch.utils.data.IterableDataset):
             audio = self.audio_transform(audio)
             return {"video": video, "audio": audio, "target": token_id}
     def get_from_hf(self, idx):
-        pass
+        #         item format:{
+        #   'id': '698766153686927283300029-0-3',
+        #   'channel': 'sharktankvn',
+        #   'visual': <video-bytes>,
+        #   'duration': 3.0,
+        #   'fps': 25,
+        #   'audio': <audio-bytes>,
+        #   'sampling_rate': 16000,
+        #   'transcript': 'rồi ra đằng sau vấn đề đó và thứ nhì là'
+        # }
+        if self.modality == "video":
+            video = self.video_transform(extract_frames(self.dataset[int(idx)]["visual"])[0])
+            return {"input": video, "target": self.dataset[int(idx)]["transcript"]}
+        elif self.modality == "audio":
+            audio = self.audio_transform(extract_audio_array(self.dataset[int(idx)]["audio"])[0])
+            return {"input": audio, "target": self.dataset[int(idx)]["transcript"]}
+        elif self.modality == "audiovisual":
+            video = self.video_transform(extract_frames(self.dataset[int(idx)]["visual"])[0])
+            audio = self.audio_transform(extract_audio_array(self.dataset[int(idx)]["audio"])[0])
+            return {"video": video, "audio": audio, "target": self.dataset[int(idx)]["transcript"]}
 
     def __iter__(self):
         # item format:

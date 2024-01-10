@@ -66,6 +66,7 @@ class DataModule(LightningDataModule):
         if self.cfg.data.select != -1 and not self.cfg.streaming:
             self.dataset["train"] = self.dataset["train"].select(range(self.cfg.data.select))
         # split dataset
+        
         self.dataset = self.dataset["train"].train_test_split(test_size=self.cfg.data.dataset.test_size)
 
     def _dataloader(self, ds, collate_fn, sampler=None):
