@@ -86,7 +86,7 @@ if __name__ == "__main__":
     channels = [(channel[0], int(channel[1])) for channel in channels]
     
     for user_id, num_videos in channels:
-        if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")) and args.overwrite:
+        if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")) or args.overwrite:
             try:
                 get_user_video(user_id=user_id, save_path=args.save_path)
             except:
