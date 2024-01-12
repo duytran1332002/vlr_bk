@@ -173,6 +173,11 @@ if __name__ == "__main__":
                     print(f"Error when downloading video {video}")
             pbar.close()
 
+            # remove jpg files
+            for f in os.listdir(output_path):
+                if f.endswith(".jpg"):
+                    os.remove(os.path.join(output_path, f))
+
         except FileNotFoundError:
             print(f"File {user_id}.txt not found.")
             continue

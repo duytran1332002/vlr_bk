@@ -17,6 +17,9 @@ def args_parser():
     
     parser.add_argument('--save_path',           type=str,
                         default=None,  help='Path for saving channel')
+
+    parser.add_argument('--overwrite',           type=bool,
+                        default=False,  help='Overwrite existing file')
     
     args = parser.parse_args()
 
@@ -83,7 +86,7 @@ if __name__ == "__main__":
     channels = [(channel[0], int(channel[1])) for channel in channels]
     
     for user_id, num_videos in channels:
-        if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")):
+        if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")) and args.overwrite:
             try:
                 get_user_video(user_id=user_id, save_path=args.save_path)
             except:
