@@ -6,23 +6,31 @@ import argparse
 
 def args_parser():
     """
-    Extract face and active speaker from raw video arguments.
+    Parse arguments.
     """
 
     parser = argparse.ArgumentParser(
         description="Download video from tiktok.")
     
     parser.add_argument('--channel_path',           type=str,
-                        default=None,  help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+                        help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
     
     parser.add_argument('--save_path',           type=str,
                         default=None,  help='Path for saving channel')
+
+    parser.add_argument('--overwrite',           action=argparse.BooleanOptionalAction,
+                        default=False,  help='Overwrite existing file')
     
     args = parser.parse_args()
 
     return args
 
 def scroll_down_page(driver):
+    """
+    A method for scrolling the page.
+    :param driver: selenium driver
+    """
+
     scroll_pause_time = 2
     screen_height = driver.execute_script("return window.screen.height;")
     i = 0
@@ -33,9 +41,13 @@ def scroll_down_page(driver):
         scroll_height = driver.execute_script("return document.body.scrollHeight;")  
         if (screen_height) * i > scroll_height:
             break 
+        
 def get_user_video(user_id, save_path, time_sleep=10):
-    # check if the user_id file exists
-    # if it does, then we don't need to scrape the page again
+    """
+    Get video from user.
+    :param user_id: user id(Ex: vietcetera)
+    :param save_path: path for saving channel
+    """
 
     options = Options()
     options.add_argument("start-maximized")
@@ -83,7 +95,7 @@ if __name__ == "__main__":
     channels = [(channel[0], int(channel[1])) for channel in channels]
     
     for user_id, num_videos in channels:
-        if not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt")):
+        if (not os.path.exists(os.path.join(args.save_path, f"{user_id}.txt"))) or args.overwrite:
             try:
                 get_user_video(user_id=user_id, save_path=args.save_path)
             except:

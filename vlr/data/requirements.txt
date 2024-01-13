@@ -12,3 +12,4 @@ opencv-python==4.8.1.78
 tqdm==4.66.1
 Cython
 speechbrain==0.5.16
+pytybefix

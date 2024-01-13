@@ -69,6 +69,11 @@ And then, run the file download_tiktok_videos.py
 ```python
 python donwload_tiktok_videos.py
 ```
+
+# Download Video From Youtube
+```python
+pip install git+https://github.com/pishiko/pytube.git@42a7d8322dd7749a9e950baf6860d115bbeaedfc
+```
 # Extract Active Speaker
 
 # Process data
