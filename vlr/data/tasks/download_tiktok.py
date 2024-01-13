@@ -8,23 +8,26 @@ import tqdm
 
 import aiohttp
 import argparse
-from fp.fp import FreeProxy
 from tiktokapipy.async_api import AsyncTikTokAPI
 from tiktokapipy.models.video import Video
 
 
 def args_parser():
     """
-    Extract face and active speaker from raw video arguments.
+    Parse arguments.
     """
 
     parser = argparse.ArgumentParser(
         description="Download video from tiktok.")
     
     parser.add_argument('--channel_path',           type=str,
-                        default=None,  help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+                        help='Path list of channels (txt file) - 2 columns (channel_id, num_videos)')
+    
     parser.add_argument('--video_url',           type=str,
-                        default=None,  help='Path contain url to download video (txt file)')
+                        help='Path contain url to download video (txt file)')
+    
+    parser.add_argument('--overwrite',           action=argparse.BooleanOptionalAction,
+                        default=False,  help='Overwrite existing file')
     
     parser.add_argument('--save_path',           type=str,
                         default=None,  help='Path for saving channel')
@@ -34,6 +37,13 @@ def args_parser():
     return args
 
 async def save_slideshow(directory, video: Video):
+    """
+    This function downloads the images and music from a slideshow and uses ffmpeg to join them together
+    :param directory: the directory to save the images and music to
+    :param video: the video object to download
+    :return: the joined video
+    """
+
     # this filter makes sure the images are padded to all the same size
     vf = "\"scale=iw*min(1080/iw\,1920/ih):ih*min(1080/iw\,1920/ih)," \
          "pad=1080:1920:(1080-iw)/2:(1920-ih)/2," \
@@ -84,6 +94,13 @@ async def save_slideshow(directory, video: Video):
 
 
 async def save_video(video: Video, api: AsyncTikTokAPI):
+    """
+    This function downloads a video from TikTok
+    :param video: the video object to download
+    :param api: the AsyncTikTokAPI instance to use
+    :return: the joined video
+    """
+
     # Carrying over this cookie tricks TikTok into thinking this ClientSession was the Playwright instance
     # used by the AsyncTikTokAPI instance
     async with aiohttp.ClientSession(cookies={cookie["name"]: cookie["value"] for cookie in await api.context.cookies() if cookie["name"] == "tt_chain_token"}) as session:
@@ -93,6 +110,12 @@ async def save_video(video: Video, api: AsyncTikTokAPI):
 
 
 async def download_video(link, output_path):
+    """
+    This function downloads a video from TikTok
+    :param link: the link to the video
+    :param output_path: the directory to save the video to
+    """
+
     async with AsyncTikTokAPI() as api:
         video: Video = await api.video(link)
         if video.image_post:
@@ -104,86 +127,91 @@ async def download_video(link, output_path):
             f.write(downloaded.read())
         
 
-async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
-    
-    async with AsyncTikTokAPI(navigation_timeout=0) as api:
-        if video_limit is not None:
-            user = await api.user(user_id, video_limit=video_limit)
-            pbar = tqdm.tqdm(total=video_limit)
-        else:
-            user = await api.user(user_id)
-            pbar = tqdm.tqdm(total=user.stats.video_count)
-        async for video in user.videos:
-            link = f"https://www.tiktok.com/@{user_id}/video/{video.id}"
-            await download_video(link=link, output_path=output_path)
-            pbar.update(1)
-            pbar.set_description(f"Downloaded {video.id}")
-        pbar.close()
+# async def down_video_tiktok_from_user(user_id, output_path, video_limit=None):
+#     """
+#     Download videos from user.
+#     :param user_id: user id(Ex: vietcetera)
+#     :param output_path: path for saving user
+#     :param video_limit: number of videos to download(-1,0: download all videos, >0: download num_videos videos)
+#     """
+
+#     async with AsyncTikTokAPI(navigation_timeout=0) as api:
+#         if video_limit is not None:
+#             user = await api.user(user_id, video_limit=video_limit)
+#             pbar = tqdm.tqdm(total=video_limit)
+#         else:
+#             user = await api.user(user_id)
+#             pbar = tqdm.tqdm(total=user.stats.video_count)
+#         async for video in user.videos:
+#             link = f"https://www.tiktok.com/@{user_id}/video/{video.id}"
+#             await download_video(link=link, output_path=output_path)
+#             pbar.update(1)
+#             pbar.set_description(f"Downloaded {video.id}")
+#         pbar.close()
+           
+async def download_channel(channel_videos: list[str], save_path: str, channel_id: str, num_videos: int = -1):
+
+    num_download = 0
+    if num_videos > 0 and num_videos < len(channel_videos):
+        num_download = num_videos
+    else:
+        num_download = len(channel_videos)
+
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    else:
+        # check if the channel has been downloaded
+        if len(os.listdir(save_path)) == num_download and args.overwrite == False:
+            print(f"Channel {channel_id} has been downloaded.")
+            return
         
+    pbar = tqdm.tqdm(total=num_download)
 
-if __name__ == "__main__":
-    args = args_parser()
+    for video in channel_videos:
+        try:
+            await download_video(link=video, output_path=save_path)
+            pbar.update(1)
+            pbar.set_description(f"Downloaded {video}")
+            if pbar.n == num_download:
+                break
+        except Exception:
+            print(f"Error when downloading video {video}")
+    pbar.close()
 
+    # remove jpg files
+    for f in os.listdir(save_path):
+        if f.endswith(".jpg"):
+            os.remove(os.path.join(save_path, f))
+
+async def download_channels(channel_path: str, save_path: str):
+    """
+    Download videos from list of channel.
+    :param channel_path: path to file containing list of channels
+    :param save_path: path for saving channels
+    """
     # read channel list
-    with open(args.channel_path, 'r') as f:
+    with open(channel_path, 'r') as f:
         lines = f.readlines()
     channels = [line.strip().split(',') for line in lines]
     channels = [(channel[0], int(channel[1])) for channel in channels]
 
-    for user_id, num_videos in channels:
-        
-        # if not os.path.exists(output_path):
-        #     os.makedirs(output_path)
-        # if num_videos > 0:
-        #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path video_limit=int(num_videos)))
-        # else:
-        #     asyncio.run(down_video_tiktok_from_user(user_id=user_id, output_path=output_path))
-        # read video list
+    for channel_id, num_videos in channels:
         try:
-            
-            with open(os.path.join(args.video_url, f"{user_id}.txt"), 'r') as f:
+            with open(os.path.join(args.video_url, f"{channel_id}.txt"), 'r') as f:
                 lines = f.readlines()
             videos = [line.strip() for line in lines]
-            num_download = 0
-            if num_videos > 0 and num_videos < len(videos):
-                num_download = num_videos
-            else:
-                num_download = len(videos)
-
-            output_path = os.path.join(args.save_path, user_id)
-
-            if not os.path.exists(output_path):
-                os.makedirs(output_path)
-            else:
-                # check if the channel has been downloaded
-                if len(os.listdir(output_path)) == num_download:
-                    print(f"Channel {user_id} has been downloaded.")
-                    continue
-
-            pbar = tqdm.tqdm(total=num_download)
-
-            for video in videos:
-                try:
-                    asyncio.run(download_video(link=video, output_path=output_path))
-                    pbar.update(1)
-                    pbar.set_description(f"Downloaded {video}")
-                    if pbar.n == num_download:
-                        break
-                except Exception as e:
-                    print(f"Error when downloading video {video}")
-            pbar.close()
-
-            # remove jpg files
-            for f in os.listdir(output_path):
-                if f.endswith(".jpg"):
-                    os.remove(os.path.join(output_path, f))
+            
+            await download_channel(videos, os.path.join(save_path, channel_id), channel_id, num_videos)
 
         except FileNotFoundError:
-            print(f"File {user_id}.txt not found.")
+            print(f"File {channel_id}.txt not found.")
             continue
-        # except Exception as e:
-        #     print(f"Error: {e}")
-        #     continue
+
+if __name__ == "__main__":
+    args = args_parser()
+
+    if args.channel_path is not None:
+        asyncio.run(download_channels(args.channel_path, args.save_path))
 
 
 
