@@ -7,12 +7,16 @@ import torch
 import subprocess
 import argparse
 import warnings
+import shutil
 import torch.multiprocessing as mp
+
+import moviepy.editor as mv
+from datasets import Dataset, get_dataset_config_names
+from huggingface_hub import HfApi
 import tqdm
-from dataclasses import dataclass
 from logging import getLogger
 
-from vlr.data.processors.active_speaker_extracting import ActiveSpeakerExtracting
+from vlr.data.processors.as_extracter import ActiveSpeakerExtracting
 
 logger = getLogger(__name__)
 warnings.filterwarnings("ignore")
@@ -109,6 +113,89 @@ def get_dataset(data_dir: str, data_out : str, video_extension: str):
     unfinished = [os.path.join(data_dir, x + "." + video_extension) for x in unfinished]
     return list(unfinished)
 
+def generate_sample(channel_dir):
+    """
+    Generate sample for each channel for uploading to hf.
+    :param channel_dir:     channel directory.
+    :return:                sample.
+    """
+    ids = []
+    channels = [os.path.basename(channel_dir)[:-7]]
+    fps = []
+    sampling_rate = []
+
+    new_channel_dir = channel_dir[:-7]
+    os.makedirs(new_channel_dir, exist_ok=True)
+
+    for chunk_dir in glob.glob(os.path.join(channel_dir, "*")):
+        for file_path in glob.glob(os.path.join(chunk_dir, "pyactive", "*.avi")):
+            # Extract id
+            ids.append(os.path.basename(file_path).split(".")[0])
+
+            video = mv.VideoFileClip(file_path)
+            # Extract fps
+            fps.append(int(video.fps))
+            # Extract sampling rate
+            sampling_rate.append(video.audio.fps)
+            # Move file
+            new_file_path = os.path.join(new_channel_dir, os.path.basename(file_path))
+            shutil.move(file_path, new_file_path)
+            
+    # Remove empty directory
+    shutil.rmtree(channel_dir)
+
+    return {
+        "id": ids,
+        "channel": channels * len(ids),
+        "fps": fps,
+        "sampling_rate": sampling_rate,
+    }
+
+def upload_to_hf(channel_name, active_speaker_dir, token):
+    api = HfApi()
+    new_channel_name = os.path.basename(channel_name)[:-7]
+    if new_channel_name in get_dataset_config_names("fptu/vietnamese-speaker-video"):
+        return
+
+    # Generate metadata
+    dataset = Dataset.from_dict(
+        generate_sample(os.path.join(active_speaker_dir, "video", channel_name))
+    )
+
+    # Save metadata
+    metadata_path = os.path.join(active_speaker_dir, "metadata", new_channel_name + ".parquet")
+    dataset.to_parquet(metadata_path)
+
+    # Upload to huggingface
+    api.upload_file(
+        path_or_fileobj=metadata_path,
+        path_in_repo=f"metadata/{new_channel_name}.parquet",
+        repo_id="fptu/vietnamese-speaker-video",
+        repo_type="dataset",
+        commit_message="chore: update dataset metadata",
+        commit_description=f"Add {channel_name}",
+        token=token,
+    )
+
+    new_channel_dir = os.path.join(active_speaker_dir, "video", new_channel_name)
+    # Zip folder
+    shutil.make_archive(
+        new_channel_dir, "zip", os.path.dirname(new_channel_dir), os.path.basename(new_channel_dir)
+    )
+    
+    # Upload to huggingface
+    api.upload_file(
+        path_or_fileobj=new_channel_dir + ".zip",
+        path_in_repo=f"video/{new_channel_name}.zip",
+        repo_id="fptu/vietnamese-speaker-video",
+        repo_type="dataset",
+        commit_message="chore: update dataset video",
+        commit_description=f"Add {new_channel_name}",
+        token=token,
+    )
+    
+    # Remove zip file
+    os.remove(os.path.join(new_channel_dir + ".zip"))
 
 def main(args):
     """
@@ -138,6 +225,18 @@ def main(args):
         with torch.multiprocessing.Pool(processes=args.num_proc) as pool:
             for _ in pool.imap_unordered(args.activespeaker.process, un_file_list):
                 update()
+    # close pool
+    pool.close()
+    pool.join()
+
+    # remove folder not contain "_finished"
+    for file in glob.glob(args.output_folder + "/*"):
+        if "_finished" not in file:
+            shutil.rmtree(file)
+    # get activate speaker folder
+    active_speaker_dir = os.path.split(os.path.split(args.output_folder)[0])[0]
+    # upload to hf
+    upload_to_hf(os.path.basename(args.output_folder), active_speaker_dir, token = "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")
 
 
 if __name__ == "__main__":
