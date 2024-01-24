@@ -170,9 +170,9 @@ class Executor(Processor):
                     dir_path=data_dir,
                     path_in_repo=os.path.join(schema, channel + ".zip"),
                 )
-                if self.configs.clean_output:
+                if self.configs.clean_output and os.path.exists(data_dir):
                     shutil.rmtree(data_dir)
-                if self.configs.clean_input:
+                if self.configs.clean_input and os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
             print()
 
