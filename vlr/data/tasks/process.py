@@ -66,13 +66,13 @@ def parse_args() -> argparse.Namespace:
         "--version",
         type=int,
         default=1,
-        help="version of the dataset.",
+        help="Version of the dataset.",
     )
     parser.add_argument(
         "--cache-dir",
         type=str,
         default=os.path.join(os.getcwd(), ".cache"),
-        help="version of the dataset.",
+        help="Cache directory.",
     )
     return parser.parse_args()
 
