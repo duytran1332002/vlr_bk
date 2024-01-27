@@ -164,7 +164,6 @@ class Executor(Processor):
         """
         if self.configs.upload_to_hub:
             print("Uploading to hub...")
-            self.__upload_metadata_to_hub(channel=channel)
             for schema, data_dir in self.configs.schema_dict.items():
                 self.__zip_and_upload_dir(
                     dir_path=data_dir,
@@ -174,6 +173,7 @@ class Executor(Processor):
                     shutil.rmtree(data_dir)
                 if self.configs.clean_input and os.path.exists(self.cache_dir):
                     shutil.rmtree(self.cache_dir)
+            self.__upload_metadata_to_hub(channel=channel)
             print()
 
     def __upload_metadata_to_hub(self, channel: str) -> None:
