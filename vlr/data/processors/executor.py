@@ -34,7 +34,9 @@ class Executor(Processor):
         self.metadata_dir = prepare_dir(os.path.join(self.configs.output_dir, "metadata"))
 
         self.dataset: Dataset = None
-        self.cache_dir = os.path.join(os.getcwd(), ".cache")
+        self.cache_dir = os.path.join(
+            os.getcwd(), ".cache", os.path.basename(self.configs.output_dir)
+        )
 
         self.available_channels = self.__load_channels()
 
