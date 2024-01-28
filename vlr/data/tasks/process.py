@@ -84,13 +84,25 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
     :return:        Task config.
     """
     task_dict = {
-        "slice": SlicingTaskConfig,
-        "crop": CroppingTaskConfig,
-        "denoise": DenoisingTaskConfig,
-        "transcribe": TranscribingTaskConfig,
+        "slice": {
+            "config": SlicingTaskConfig,
+            "dir": "vietnamese-speaker-clip",
+        },
+        "crop": {
+            "config": CroppingTaskConfig,
+            "dir": "vietnamese-speaker-lip-clip",
+        },
+        "denoise": {
+            "config": DenoisingTaskConfig,
+            "dir": "denoised-vietnamese-audio",
+        },
+        "transcribe": {
+            "config": TranscribingTaskConfig,
+            "dir": "purified-vietnamese-audio",
+        },
     }
-    task_configs = task_dict[args.task](
-        output_dir=args.output_dir,
+    task_configs = task_dict[args.task]["config"](
+        output_dir=os.path.join(args.output_dir, task_dict[args.task]["dir"]),
         channel_names=args.channel_names,
         overwrite=args.overwrite,
         upload_to_hub=args.upload_to_hub,
