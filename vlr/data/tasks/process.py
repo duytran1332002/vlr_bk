@@ -151,6 +151,9 @@ def main(configs: TaskConfig) -> None:
 
         # Check number of samples.
         print("Checking number of samples...")
+        if executor.dataset.num_rows < 1:
+            print("No samples left in this channel.")
+            continue
         executor.check_num_samples_in_dir()
         executor.print_num_samples_change()
         executor.print_num_output_samples()
