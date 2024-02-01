@@ -34,7 +34,6 @@ class Executor(Processor):
         self.metadata_dir = prepare_dir(os.path.join(self.configs.output_dir, "metadata"))
 
         self.dataset: Dataset = None
-        self.cache_dir = os.path.join(configs.cache_dir, os.path.basename(self.configs.output_dir))
 
         self.available_channels = self.__load_channels()
 
@@ -81,7 +80,7 @@ class Executor(Processor):
         self.dataset = load_dataset(
             self.configs.src_repo_id, channel,
             split="train",
-            cache_dir=self.cache_dir,
+            cache_dir=self.configs.cache_dir,
         )
         if self.configs.remove_columns_loading:
             self.dataset = self.dataset.remove_columns(
@@ -170,9 +169,9 @@ class Executor(Processor):
                     path_in_repo=os.path.join(schema, channel + ".zip"),
                 )
                 if self.configs.clean_output and os.path.exists(data_dir):
-                    shutil.rmtree(data_dir)
-                if self.configs.clean_input and os.path.exists(self.cache_dir):
-                    shutil.rmtree(self.cache_dir)
+                    shutil.rmtree(data_dir, ignore_errors=True)
+                if self.configs.clean_input and os.path.exists(self.configs.cache_dir):
+                    shutil.rmtree(self.configs.cache_dir, ignore_errors=True)
             self.__upload_metadata_to_hub(channel=channel)
             print()
 

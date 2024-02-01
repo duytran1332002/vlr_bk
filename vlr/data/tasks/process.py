@@ -106,7 +106,7 @@ def get_task_configs(args: argparse.Namespace) -> TaskConfig:
         clean_input=args.clean_input,
         clean_output=args.clean_output,
         version=args.version,
-        cache_dir=args.cache_dir,
+        cache_dir=os.path.join(args.cache_dir, task_dict[args.task]["dir"])
     )
     return task_configs
 
