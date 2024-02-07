@@ -29,22 +29,25 @@ class Denoiser(Processor):
         audio_output_path = os.path.join(audio_output_dir, sample["id"][0] + ".wav")
 
         if not os.path.exists(audio_output_path):
-            audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
-            audio_array = convert_audio(
-                audio_array.to(self.device),
-                sampling_rate,
-                self.model.sample_rate,
-                self.model.chin
-            )
+            try:
+                audio_array, sampling_rate = torchaudio.load(sample["audio"][0])
+                audio_array = convert_audio(
+                    audio_array.to(self.device),
+                    sampling_rate,
+                    self.model.sample_rate,
+                    self.model.chin
+                )
 
-            with torch.no_grad():
-                denoised_audio_array = self.model(audio_array[None].float())[0].cpu()
+                with torch.no_grad():
+                    denoised_audio_array = self.model(audio_array[None].float())[0].cpu()
 
-            torchaudio.save(
-                audio_output_path,
-                denoised_audio_array,
-                output_sampling_rate,
-            )
+                torchaudio.save(
+                    audio_output_path,
+                    denoised_audio_array,
+                    output_sampling_rate,
+                )
+            except Exception:
+                sample["id"] = [None]
 
         sample["sampling_rate"][0] = output_sampling_rate
         return sample
